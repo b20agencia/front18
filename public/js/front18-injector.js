@@ -14,6 +14,10 @@
 (function () {
     'use strict';
 
+    window.__front18_state__ = window.__front18_state__ || {};
+    window.__front18_state__.sdkDetected = true;
+    window.__front18_state__.sdkInitialized = true;
+
     // ── Lê atributos do script tag ─────────────────────────────────────────
     var scriptTag  = document.currentScript ||
                      document.querySelector('script[src*="front18-injector.js"]');
@@ -66,15 +70,23 @@
                 mainGateUnlocked = true;
                 sessionStorage.setItem(SESSION_KEY, '1');
             }
-            setTimeout(enableContentBlur, 400);
+            if (typeof window.Front18Release === 'function') window.Front18Release();
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', enableContentBlur);
+            } else {
+                setTimeout(enableContentBlur, 100);
+            }
             return;
         }
 
         if (document.getElementById('front18-gate')) return;
 
         // ── Overlay escuro imediato (feedback instantâneo ao visitante) ──────
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'relative'; // evita scroll via keyboard
+        if (document.body) {
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'relative'; // evita scroll via keyboard
+        }
 
         injectBaseStyles();
 
@@ -119,7 +131,11 @@
         });
         iframe.allow = 'camera; microphone; autoplay';
         container.appendChild(iframe);
-        document.body.appendChild(container);
+        
+        var targetNode = document.body || document.documentElement;
+        targetNode.appendChild(container);
+
+        if (typeof window.Front18Release === 'function') window.Front18Release();
 
         // Fetch do Payload Ofuscado do Gateway
         var h = encodeURIComponent(window.location.hostname);
@@ -385,10 +401,16 @@
 
                 var gate = document.getElementById('front18-gate');
                 if (gate) gate.remove();
-                document.body.style.overflow = '';
-                document.body.style.position = '';
+                if (document.body) {
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                }
 
-                setTimeout(enableContentBlur, 400);
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', enableContentBlur);
+                } else {
+                    setTimeout(enableContentBlur, 100);
+                }
 
             } else {
                 // ─ Aprovação no content gate ─
@@ -398,6 +420,10 @@
 
         if (event.data === 'FRONT18_CONTENT_CANCEL') {
             closeContentGate();
+        }
+
+        if (event.data === 'FRONT18_VERIFIED_FAIL') {
+            clearTimeout(gateTimeoutId);
         }
     });
 
@@ -413,11 +439,8 @@
         loadFront18();
     }
 
-    // Aguarda o DOM estar pronto antes de iniciar
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    // Executamos IMEDIATAMENTE a proteção / injeção inicial do SDK
+    // Isso é vital para não atingir o teto de 3 segundos do Watchdog do WP AntiFlicker!
+    init();
 
 })();

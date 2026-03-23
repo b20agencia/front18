@@ -28,16 +28,35 @@ Promise.all([
     console.error("Erro ao carregar os modelos: ", err);
     statusMessage.className = 'status error';
     statusMessage.innerText = 'Falha ao baixar redes neurais.';
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage('FRONT18_VERIFIED_FAIL', '*');
+    }
 });
 
 function startVideo() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        loadingOverlay.style.display = 'none';
+        statusMessage.className = 'status error';
+        statusMessage.innerText = 'Permissão de câmera negada ou ambiente sem HTTPS.';
+        verifyBtn.innerHTML = 'Análise Falhou';
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage('FRONT18_VERIFIED_FAIL', '*');
+        }
+        return;
+    }
+
     navigator.mediaDevices.getUserMedia({
         video: { width: 480, height: 320, facingMode: "user" }
     })
     .then(stream => { video.srcObject = stream; })
     .catch(err => {
+        loadingOverlay.style.display = 'none';
         statusMessage.className = 'status error';
-        statusMessage.innerText = 'Precisamos da permissão de câmera para analisar.';
+        statusMessage.innerText = 'Precisamos da permissão de câmera para analisar. Verifique seu navegador.';
+        verifyBtn.innerHTML = 'Análise Falhou';
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage('FRONT18_VERIFIED_FAIL', '*');
+        }
     });
 }
 

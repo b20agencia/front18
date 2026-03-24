@@ -35,6 +35,7 @@ if ($displayIp === '127.0.0.0' || $displayIp === '::1') {
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <link rel="icon" type="image/png" href="public/img/favicon.png">
     <meta charset="UTF-8">
     <title>Relatório Técnico de Auditoria #<?= escape($log['id']) ?></title>
     <style>

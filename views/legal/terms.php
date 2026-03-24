@@ -4,6 +4,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR" class="dark">
 <head>
+    <link rel="icon" type="image/png" href="public/img/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Termos de Uso e Responsabilidade | Front18 Pro</title>

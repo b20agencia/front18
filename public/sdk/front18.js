@@ -512,12 +512,13 @@
                 this.createOverlay();
                 this.createModal();
                 this.startObserver();
-                
-                // Em Global Lock, a tela já está fechada por overlay fixo
-                this.releaseWPShield();
-                if (this.config.preventScroll && this.config.mode !== 'blur_media') {
-                    document.documentElement.classList.add('Front18-no-scroll');
-                }
+            }
+
+            // Avisa a Camada do Plugin WP que a blindagem local assumiu, 
+            // logo a página inteira já pode ser revelada (Tirando o FOUC shield branco/preto do WP)
+            this.releaseWPShield();
+            if (this.config.preventScroll && this.config.mode !== 'blur_media') {
+                document.documentElement.classList.add('Front18-no-scroll');
             }
         },
 
@@ -608,118 +609,31 @@
                 @keyframes ag-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
                 @media (max-width: 480px) { #Front18-modal { padding: 40px 24px; } .Front18-title { font-size: 22px; } }
                 
-                /* Mídia Borrada Global Inteligente (Sem FOUC!) 
-                 * Apenas aplicável nas tags rigorosamente mapeadas pelo JS (.Front18-media-blurred) 
-                 */
-                
-                /* Smart Blur com Selo Premium para Estruturas (Elementor, Divs, CPTs) */
-                html.Front18-blur-active .Front18-smart-container-blurred {
-                    position: relative !important;
-                    overflow: hidden !important;
-                    cursor: pointer !important;
-                }
-                html.Front18-blur-active .Front18-smart-container-blurred > * {
-                    opacity: 0.05 !important; /* Ofusca textos mantendo geometria do layout */
-                    filter: blur(25px) grayscale(100%) !important;
-                    pointer-events: none !important;
-                    transition: all 0.3s ease !important;
-                }
-                html.Front18-blur-active .Front18-smart-container-blurred::before {
-                    content: "" !important;
-                    display: block !important;
-                    position: absolute !important;
-                    top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-                    width: 100% !important; height: 100% !important;
-                    z-index: 1000000 !important;
-                    background: #0f172a !important; /* Paredão Nível 0 contra Vazamentos Safari/Apple */
-                }
-                
-                html.Front18-blur-active .Front18-media-wrapper-premium::before {
-                    content: "" !important;
-                    display: block !important;
-                    position: absolute !important;
-                    top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-                    width: 100% !important; height: 100% !important;
-                    z-index: 1000000 !important;
-                    background: rgba(15, 23, 42, 0.5) !important;
-                }
-                
-                /* The Badge text */
-                html.Front18-blur-active .Front18-smart-container-blurred::after,
-                html.Front18-blur-active .Front18-media-wrapper-premium::after {
-                    content: "🔒 +18 SIGILOSO \\A VERIFICAÇÃO NECESSÁRIA" !important;
-                    white-space: pre !important;
-                    position: absolute !important;
-                    top: 50% !important;
-                    left: 50% !important;
-                    transform: translate(-50%, -50%) !important;
-                    z-index: 1000001 !important;
-                    background: rgba(15, 23, 42, 0.85) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-                    color: #f8fafc !important;
-                    padding: 10px 16px !important;
-                    border-radius: 12px !important;
-                    font-family: inherit !important;
-                    font-size: 11px !important;
-                    font-weight: 800 !important;
-                    text-align: center !important;
-                    line-height: 1.4 !important;
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
-                    letter-spacing: 0.5px !important;
-                    pointer-events: none !important;
-                    transition: all 0.3s ease !important;
-                }
-
-                /* Grid Alignment fix only for Grid Wrapper */
-                html.Front18-blur-active .Front18-media-wrapper-premium::after {
-                    position: relative !important;
-                    top: auto !important; left: auto !important; transform: none !important;
-                    grid-area: 1 / 1 !important;
-                }
-                
-                html.Front18-blur-active .Front18-smart-container-blurred:hover::before {
-                    background: rgba(15, 23, 42, 0.92) !important;
-                }
-                html.Front18-blur-active .Front18-media-wrapper-premium:hover::before {
-                    backdrop-filter: blur(25px) grayscale(50%) saturate(0.5) !important;
-                    -webkit-backdrop-filter: blur(25px) grayscale(50%) saturate(0.5) !important;
-                    background: rgba(15, 23, 42, 0.5) !important;
-                }
-                html.Front18-blur-active .Front18-smart-container-blurred:hover::after {
-                    background: #6366f1 !important;
-                    color: white !important;
-                    content: "🔓 LIBERAR ACESSO" !important;
-                    transform: translate(-50%, -50%) scale(1.05) !important;
-                }
-                html.Front18-blur-active .Front18-media-wrapper-premium:hover::after {
-                    background: #6366f1 !important;
-                    color: white !important;
-                    content: "🔓 LIBERAR ACESSO" !important;
-                    transform: scale(1.05) !important;
-                }
-                
-                html.Front18-blur-active .Front18-media-wrapper-premium {
-                    display: inline-grid !important;
-                    place-items: center !important;
-                    position: relative !important;
-                    max-width: 100% !important;
-                    vertical-align: top;
-                    overflow: hidden !important; /* Contain blur edges perfectly */
-                    cursor: pointer !important;
-                    background: #0f172a !important; /* Bloqueador bruto nativo */
-                }
-                .Front18-media-wrapper-premium > .Front18-media-blurred {
-                    grid-area: 1 / 1 !important;
-                    width: 100% !important;
-                    margin: 0 !important;
-                }
-                
-                /* Compatibilidade com as tags nativas: Força agressiva contra IFrames do PandaVideo e Safari */
-                html.Front18-blur-active .Front18-media-blurred { 
+                /* Mídia Borrada Global Inteligente (Sem FOUC!) */
+                html.Front18-blur-active img, 
+                html.Front18-blur-active video, 
+                html.Front18-blur-active iframe, 
+                html.Front18-blur-active picture, 
+                html.Front18-blur-active source,
+                html.Front18-blur-active [data-front18="locked"],
+                html.Front18-blur-active [data-elementor-type="loop-item"],
+                html.Front18-blur-active [data-settings*="background_background"],
+                html.Front18-blur-active .wp-block-cover,
+                html.Front18-blur-active .elementor-background-overlay {
+                    filter: blur(25px) grayscale(50%) saturate(0.5) !important; 
                     cursor: pointer !important; 
-                    opacity: 0.1 !important; /* Afoga a midia dentro do dark mode */
-                    filter: blur(35px) grayscale(100%) !important; 
+                    transition: filter 0.5s ease;
                 }
+                
+                /* Blindagem para não afetar imagens internas do modal/banner DPO */
+                #Front18-overlay img, #Front18-overlay svg, #Front18-overlay video,
+                #Front18-privacy-banner img, #Front18-privacy-banner svg, #Front18-privacy-banner video {
+                    filter: none !important;
+                }
+                
+                /* Compatibilidade com as classes manipuladas via JS */
+                .Front18-media-blurred { filter: blur(25px) grayscale(50%) saturate(0.5) !important; cursor: pointer !important; transition: filter 0.5s ease !important; }
+                .Front18-media-blurred:hover { filter: blur(15px) grayscale(20%) saturate(0.8) !important; }
             `;
             
             this.elements.style.textContent = css.replace(/\s+/g, ' ').trim();
@@ -734,119 +648,48 @@
             // Em vez de processar elemento por elemento tarde demais, usamos css na tag raiz
             document.documentElement.classList.add('Front18-blur-active');
             
-            const openModal = (e) => {
-                if (e) { e.preventDefault(); e.stopPropagation(); }
-                if(!document.getElementById('Front18-overlay')) {
-                    this.createOverlay(); this.createModal();
-                } else {
-                    document.getElementById('Front18-overlay').classList.add('Front18-active');
-                }
-            };
-            
-            // Reação dinâmica na Arvore do DOM (Atraso mínimo para Lazy Loads)
-            setTimeout(() => {
-                // 1. Tags Nativas (Blur Filtro Direto com Pseudo Wrapper)
-                const rawMedias = document.querySelectorAll('img, video, iframe, picture, source');
-                const exclusions = '#masthead, .site-header, header.main-header, header.elementor-location-header, footer, nav.site-navigation, aside.sidebar, .site-footer, [data-elementor-type="header"], [data-elementor-type="footer"], .elementor-location-header, .elementor-location-footer, .logo, .custom-logo';
-                
-                rawMedias.forEach(media => {
-                    // Ignora se estiver no modal de dpo/padrao, e ignora top-level site headers/footers
-                    if(!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner') && !media.closest(exclusions)) {
-                        
-                        // Envelopamento CSS Grid apenas em tags restritas que não suportam pseudo-elementos
-                        if (media.tagName.match(/^(IMG|VIDEO|IFRAME|PICTURE)$/i)) {
-                            // Ignora micro imagems/icones
-                            if (media.clientWidth > 0 && media.clientWidth < 80) return;
-                            
-                            if (!media.parentElement.classList.contains('Front18-media-wrapper-premium')) {
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'Front18-media-wrapper-premium';
-                                media.parentNode.insertBefore(wrapper, media);
-                                wrapper.appendChild(media);
-                            }
+            // Adiciona click events retrospectivos quando o DOM estiver desenhado
+            const medias = document.querySelectorAll('img, video, iframe, picture, [data-front18="locked"], [data-elementor-type="loop-item"], [data-settings*="background_background"], .wp-block-cover, .elementor-background-overlay');
+            medias.forEach(media => {
+                if(!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner')) {
+                    media.classList.add('Front18-media-blurred');
+                    
+                    const openModal = (e) => {
+                        if (e) { e.preventDefault(); e.stopPropagation(); }
+                        if(!document.getElementById('Front18-overlay')) {
+                            this.createOverlay(); this.createModal();
+                        } else {
+                            document.getElementById('Front18-overlay').classList.add('Front18-active');
                         }
-                        
-                        media.classList.add('Front18-media-blurred');
-                        
-                        if (media.tagName === 'VIDEO') {
-                            // Trava rígida contra AutoPlay e Controls nativos
-                            media.pause();
-                            media.dataset.agControls = media.hasAttribute('controls') ? 'true' : 'false';
-                            media.removeAttribute('controls');
-                            media.addEventListener('play', (e) => {
+                    };
+
+                    if (media.tagName === 'VIDEO') {
+                        // Trava rígida contra AutoPlay e Controls nativos
+                        media.pause();
+                        media.dataset.agControls = media.hasAttribute('controls') ? 'true' : 'false';
+                        media.removeAttribute('controls');
+                        media.addEventListener('play', (e) => {
+                            if (document.documentElement.classList.contains('Front18-blur-active')) {
+                                e.preventDefault(); media.pause(); openModal(e);
+                            }
+                        });
+                        media.addEventListener('click', openModal);
+                    } else if (media.tagName === 'IFRAME') {
+                        // Iframes engolem cliques. Desativamos eventos neles para o parent capturar.
+                        media.classList.add('Front18-iframe-shielded');
+                        media.style.pointerEvents = 'none';
+                        if (media.parentElement) {
+                            media.parentElement.addEventListener('click', (e) => {
                                 if (document.documentElement.classList.contains('Front18-blur-active')) {
-                                    e.preventDefault(); media.pause(); openModal(e);
+                                    openModal(e);
                                 }
                             });
-                            media.addEventListener('click', openModal);
-                        } else if (media.tagName === 'IFRAME') {
-                            // Iframes engolem cliques. Desativamos eventos neles para o parent capturar.
-                            media.classList.add('Front18-iframe-shielded');
-                            media.style.pointerEvents = 'none';
-                            if (media.parentElement) {
-                                media.parentElement.addEventListener('click', (e) => {
-                                    if (document.documentElement.classList.contains('Front18-blur-active')) {
-                                        openModal(e);
-                                    }
-                                });
-                            }
-                        } else {
-                            media.addEventListener('click', openModal);
                         }
+                    } else {
+                        media.addEventListener('click', openModal);
                     }
-                });
-
-                // Failsafe Brutal Contra Stylesheets Assíncronos:
-                // Varre o DOM em 4 momentos no arranque, pois folhas de estilo remotas não disparam MutationObserver!
-                if (!this._failsafeSweep) {
-                    this._failsafeSweep = true;
-                    [150, 500, 1200, 2500].forEach(delay => {
-                        setTimeout(() => {
-                            if (document.documentElement.classList.contains('Front18-blur-active')) {
-                                this.blurMediaInstead();
-                            }
-                        }, delay);
-                    });
                 }
-
-                // 2. Elementos Estruturais Modernos (Smart Blur Baseado Em Backdrop + Badge)
-                const smartContainers = Array.from(document.querySelectorAll('[data-front18="locked"], [data-elementor-type="loop-item"], .wp-block-cover, .elementor-background-overlay, [style*="background-image"], [style*="background: url"], .elementor-widget-theme-post-featured-image, .elementor-widget-video'));
-                
-                const suspects = document.querySelectorAll('.e-parent[data-settings*="background_background"], .elementor-section[data-settings*="background_background"]');
-                suspects.forEach(container => {
-                    if (!smartContainers.includes(container)) {
-                        let bg = window.getComputedStyle(container).getPropertyValue('background-image');
-                        // Matadora de Charadas: Essa Div injetou uma fotografia de plano de fundo real via CSS? Tranque!
-                        if (bg && bg !== 'none' && bg.includes('url(')) {
-                            smartContainers.push(container);
-                        }
-                    }
-                });
-
-                smartContainers.forEach(container => {
-                    const isExplicit = container.dataset && container.dataset.front18 === 'locked';
-                    // Ignora overlay do modal
-                    if(!container.closest('#Front18-overlay') && !container.closest('#Front18-privacy-banner')) {
-                        // Se não for explicitamente lockado manualmente, proteja headers/footers estruturais do Elementor
-                        if (!isExplicit && container.closest(exclusions)) return;
-
-                        if (!container.classList.contains('Front18-smart-container-blurred')) {
-                            container.classList.add('Front18-smart-container-blurred');
-                            
-                            // Arma Nível Delta: Apaga o Background no Braço! Impossível o navegador renderizar a imagem se eu a deleto da memória ativa via JS !important.
-                            container.dataset.agOrigBg = container.style.background || '';
-                            container.dataset.agOrigBgImg = container.style.backgroundImage || '';
-                            container.style.setProperty('background', '#0f172a', 'important');
-                            container.style.setProperty('background-image', 'none', 'important');
-
-                            container.addEventListener('click', openModal);
-                        }
-                    }
-                });
-                // Libera a tela apenas DEPOIS que todas as estruturas foram bloqueadas!
-                this.releaseWPShield();
-
-            }, 50);
+            });
         },
 
         lockPage: function() {
@@ -1012,31 +855,6 @@
 
         /** Barreira Técnica de Superfície (Resistência Ativa do DOM Front-end) **/
         startObserver: function() {
-            // 1. Escudo em Tempo Real contra Cache Plugins e Lazy Loaders
-            // Essa IA varre o site continuamente para prender mídias atrasadas injetadas por WP Rocket/Elementor no scroll
-            if (!this.lazyObserver && this.config.mode === 'blur_media') {
-                this.lazyObserver = new MutationObserver((mutations) => {
-                    let dirty = false;
-                    for (let i = 0; i < mutations.length; i++) {
-                        let m = mutations[i];
-                        if (m.type === 'childList' && m.addedNodes.length > 0) dirty = true;
-                        if (m.type === 'attributes') dirty = true;
-                        if (dirty) break;
-                    }
-                    if (dirty && document.documentElement.classList.contains('Front18-blur-active')) {
-                        if (this._reqFrame) cancelAnimationFrame(this._reqFrame);
-                        this._reqFrame = requestAnimationFrame(() => {
-                            this.blurMediaInstead();
-                        });
-                    }
-                });
-                this.lazyObserver.observe(document.body, { 
-                    childList: true, subtree: true, 
-                    attributes: true, attributeFilter: ['class', 'style', 'src', 'data-src', 'data-bg', 'data-ll-status'] 
-                });
-            }
-
-            // 2. Observer de Anti-Bypass (Impede a invasão via console/devtools)
             if (!this.config.antiBypass) return;
             let debounceTimer;
             this.observer = new MutationObserver((mutations) => {
@@ -1406,22 +1224,7 @@
             if(this.elements.overlay) this.elements.overlay.classList.remove('Front18-active');
             
             if (this.config.mode === 'blur_media') {
-                if (this.lazyObserver) { this.lazyObserver.disconnect(); this.lazyObserver = null; }
-                
                 document.documentElement.classList.remove('Front18-blur-active'); // Remove lock mestre
-                
-                // Remove Obliteração Sledgehammer
-                document.querySelectorAll('.Front18-smart-container-blurred').forEach(el => {
-                    el.style.background = el.dataset.agOrigBg || ''; 
-                    el.style.backgroundImage = el.dataset.agOrigBgImg || '';
-                    el.classList.remove('Front18-smart-container-blurred');
-                });
-                document.querySelectorAll('.Front18-media-wrapper-premium').forEach(el => {
-                    let child = el.firstElementChild;
-                    if(child) el.parentNode.insertBefore(child, el);
-                    el.remove();
-                });
-                
                 const medias = document.querySelectorAll('.Front18-media-blurred');
                 medias.forEach(media => {
                     media.classList.remove('Front18-media-blurred');

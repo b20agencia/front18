@@ -199,24 +199,26 @@ async function finalizarBiometria(age) {
 
 async function registrarNoBackend(clientId, idade_estimada, aprovado) {
     try {
-        // Tentar capturar o site pai onde o iFrame foi injetado, ou usar 'Acesso Direto'
-        const rawReferrer = document.referrer;
+        // Tentar capturar o site pai onde o iFrame foi injetado
         let siteHost = window.__F18_HOST_SITE || 'Acesso Direto';
-        if (siteHost === 'Direto' && rawReferrer) {
-            siteHost = new URL(rawReferrer).hostname;
+        if (siteHost === 'Acesso Direto' && document.referrer) {
+            siteHost = new URL(document.referrer).hostname;
         }
 
-        await fetch(serverURL + '/api/verify-logs', {
+        // BaseURL resolvida dinamicamente baseada na origem atual do Iframe (para localhost MVC)
+        const resolvedServerUrl = (window.__F18_SERVER_URL && window.__F18_SERVER_URL !== '') ? window.__F18_SERVER_URL : window.location.origin;
+
+        await fetch(resolvedServerUrl + '/public/api/track.php?action=verify&key=' + encodeURIComponent(clientId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                client_id: clientId, 
                 host_site: siteHost,
-                idade_estimada: idade_estimada, 
+                ai_age: idade_estimada, 
+                ai_confidence: 90.0, // face-api base confidence
                 aprovado: aprovado 
             })
         });
     } catch (err) {
-        console.error("Erro API:", err);
+        console.error("Erro ao registrar logs biométricos na API B2B:", err);
     }
 }

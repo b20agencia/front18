@@ -61,10 +61,6 @@ switch ($route) {
     case 'safe':
         require __DIR__ . '/safe.php';
         break;
-
-    case 'verificacao':
-        require __DIR__ . '/api/verificacao.php';
-        break;
         
     case 'security':
         require __DIR__ . '/security.php';

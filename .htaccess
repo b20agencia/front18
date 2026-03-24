@@ -1,0 +1,19 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Bloquear Lixeira/Listagens
+    Options -Indexes
+
+    # Proteger a pasta SRC e VIEWS contra acesso direto pelo navegador (Ameaças)
+    RewriteRule ^src/ - [F,L]
+    RewriteRule ^views/ - [F,L]
+
+    # Redirecionar URL base limpa para o Controlador Principal (Front Controller /public/)
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ /public/index.php?route=$1 [L,QSA]
+</IfModule>
+
+# Criptografar acesso acidental a arquivos soltos
+<FilesMatch "\.(env|json|lock|md|log|sqlite|sqlite3|sql|ini)$">
+    Require all denied
+</FilesMatch>

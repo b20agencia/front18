@@ -609,16 +609,9 @@
                 @keyframes ag-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
                 @media (max-width: 480px) { #Front18-modal { padding: 40px 24px; } .Front18-title { font-size: 22px; } }
                 
-                /* Mídia Borrada Global Inteligente (Sem FOUC!) */
-                html.Front18-blur-active img, 
-                html.Front18-blur-active video, 
-                html.Front18-blur-active iframe, 
-                html.Front18-blur-active picture, 
-                html.Front18-blur-active source {
-                    filter: blur(25px) grayscale(50%) saturate(0.5) !important; 
-                    cursor: pointer !important; 
-                    transition: filter 0.5s ease;
-                }
+                /* Mídia Borrada Global Inteligente (Sem FOUC!) 
+                 * Apenas aplicável nas tags rigorosamente mapeadas pelo JS (.Front18-media-blurred) 
+                 */
                 
                 /* Smart Blur com Selo Premium para Estruturas (Elementor, Divs, CPTs) */
                 html.Front18-blur-active .Front18-smart-container-blurred {
@@ -631,16 +624,22 @@
                     pointer-events: none !important;
                     transition: opacity 0.3s ease !important;
                 }
-                html.Front18-blur-active .Front18-smart-container-blurred::before {
+                html.Front18-blur-active .Front18-smart-container-blurred::before,
+                html.Front18-blur-active .Front18-media-wrapper-premium::before {
                     content: "" !important;
                     position: absolute !important;
                     inset: 0 !important;
+                    grid-area: 1 / 1 !important;
                     z-index: 1000000 !important;
                     backdrop-filter: blur(25px) grayscale(50%) saturate(0.5) !important;
                     -webkit-backdrop-filter: blur(25px) grayscale(50%) saturate(0.5) !important;
                     background: rgba(15, 23, 42, 0.4) !important;
+                    transition: backdrop-filter 0.5s ease, background 0.5s ease !important;
                 }
-                html.Front18-blur-active .Front18-smart-container-blurred::after {
+                
+                /* The Badge text */
+                html.Front18-blur-active .Front18-smart-container-blurred::after,
+                html.Front18-blur-active .Front18-media-wrapper-premium::after {
                     content: "🔒 +18 SIGILOSO \\A VERIFICAÇÃO NECESSÁRIA" !important;
                     white-space: pre !important;
                     position: absolute !important;
@@ -663,22 +662,50 @@
                     pointer-events: none !important;
                     transition: all 0.3s ease !important;
                 }
+
+                /* Grid Alignment fix only for Grid Wrapper */
+                html.Front18-blur-active .Front18-media-wrapper-premium::after {
+                    position: relative !important;
+                    top: auto !important; left: auto !important; transform: none !important;
+                    grid-area: 1 / 1 !important;
+                }
+                
+                html.Front18-blur-active .Front18-smart-container-blurred:hover::before,
+                html.Front18-blur-active .Front18-media-wrapper-premium:hover::before {
+                    backdrop-filter: blur(15px) grayscale(50%) saturate(0.7) !important;
+                    -webkit-backdrop-filter: blur(15px) grayscale(50%) saturate(0.7) !important;
+                }
                 html.Front18-blur-active .Front18-smart-container-blurred:hover::after {
                     background: #6366f1 !important;
                     color: white !important;
                     content: "🔓 LIBERAR ACESSO" !important;
                     transform: translate(-50%, -50%) scale(1.05) !important;
                 }
+                html.Front18-blur-active .Front18-media-wrapper-premium:hover::after {
+                    background: #6366f1 !important;
+                    color: white !important;
+                    content: "🔓 LIBERAR ACESSO" !important;
+                    transform: scale(1.05) !important;
+                }
                 
-                /* Blindagem para não afetar imagens internas do modal/banner DPO */
-                #Front18-overlay img, #Front18-overlay svg, #Front18-overlay video,
-                #Front18-privacy-banner img, #Front18-privacy-banner svg, #Front18-privacy-banner video {
-                    filter: none !important;
+                /* Bloqueio Premium individual para Nativos com CSS Grid Overlay */
+                .Front18-media-wrapper-premium {
+                    display: inline-grid !important;
+                    place-items: center !important;
+                    position: relative !important;
+                    max-width: 100% !important;
+                    vertical-align: top;
+                    overflow: hidden !important; /* Contain blur edges perfectly */
+                    cursor: pointer !important;
+                }
+                .Front18-media-wrapper-premium > .Front18-media-blurred {
+                    grid-area: 1 / 1 !important;
+                    width: 100% !important;
+                    margin: 0 !important;
                 }
                 
                 /* Compatibilidade com as tags nativas */
-                .Front18-media-blurred { filter: blur(25px) grayscale(50%) saturate(0.5) !important; cursor: pointer !important; transition: filter 0.5s ease !important; }
-                .Front18-media-blurred:hover { filter: blur(15px) grayscale(20%) saturate(0.8) !important; }
+                .Front18-media-blurred { cursor: pointer !important; }
             `;
             
             this.elements.style.textContent = css.replace(/\s+/g, ' ').trim();
@@ -704,10 +731,27 @@
             
             // Reação dinâmica na Arvore do DOM (Atraso mínimo para Lazy Loads)
             setTimeout(() => {
-                // 1. Tags Nativas (Blur Filtro Direto)
+                // 1. Tags Nativas (Blur Filtro Direto com Pseudo Wrapper)
                 const rawMedias = document.querySelectorAll('img, video, iframe, picture, source');
+                const exclusions = 'header, footer, nav, aside, .site-header, .site-footer, [data-elementor-type="header"], [data-elementor-type="footer"], .elementor-location-header, .elementor-location-footer, .logo, .custom-logo';
+                
                 rawMedias.forEach(media => {
-                    if(!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner')) {
+                    // Ignora se estiver no modal de dpo/padrao, e ignora se for logotipo de cabecalho/rodape pra nao quebrar interface
+                    if(!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner') && !media.closest(exclusions)) {
+                        
+                        // Envelopamento CSS Grid apenas em tags restritas que não suportam pseudo-elementos
+                        if (media.tagName.match(/^(IMG|VIDEO|IFRAME|PICTURE)$/i)) {
+                            // Ignora micro imagems/icones
+                            if (media.clientWidth > 0 && media.clientWidth < 80) return;
+                            
+                            if (!media.parentElement.classList.contains('Front18-media-wrapper-premium')) {
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'Front18-media-wrapper-premium';
+                                media.parentNode.insertBefore(wrapper, media);
+                                wrapper.appendChild(media);
+                            }
+                        }
+                        
                         media.classList.add('Front18-media-blurred');
                         
                         if (media.tagName === 'VIDEO') {
@@ -739,9 +783,14 @@
                 });
 
                 // 2. Elementos Estruturais Modernos (Smart Blur Baseado Em Backdrop + Badge)
-                const smartContainers = document.querySelectorAll('[data-front18="locked"], [data-elementor-type="loop-item"], [data-settings*="background_background"], .wp-block-cover, .elementor-background-overlay');
+                const smartContainers = document.querySelectorAll('[data-front18="locked"], [data-elementor-type="loop-item"], .wp-block-cover, .elementor-background-overlay');
                 smartContainers.forEach(container => {
+                    const isExplicit = container.dataset && container.dataset.front18 === 'locked';
+                    // Ignora overlay do modal
                     if(!container.closest('#Front18-overlay') && !container.closest('#Front18-privacy-banner')) {
+                        // Se não for explicitamente lockado manualmente, proteja headers/footers estruturais do Elementor
+                        if (!isExplicit && container.closest(exclusions)) return;
+
                         container.classList.add('Front18-smart-container-blurred');
                         container.addEventListener('click', openModal);
                     }

@@ -614,15 +614,60 @@
                 html.Front18-blur-active video, 
                 html.Front18-blur-active iframe, 
                 html.Front18-blur-active picture, 
-                html.Front18-blur-active source,
-                html.Front18-blur-active [data-front18="locked"],
-                html.Front18-blur-active [data-elementor-type="loop-item"],
-                html.Front18-blur-active [data-settings*="background_background"],
-                html.Front18-blur-active .wp-block-cover,
-                html.Front18-blur-active .elementor-background-overlay {
+                html.Front18-blur-active source {
                     filter: blur(25px) grayscale(50%) saturate(0.5) !important; 
                     cursor: pointer !important; 
                     transition: filter 0.5s ease;
+                }
+                
+                /* Smart Blur com Selo Premium para Estruturas (Elementor, Divs, CPTs) */
+                html.Front18-blur-active .Front18-smart-container-blurred {
+                    position: relative !important;
+                    overflow: hidden !important;
+                    cursor: pointer !important;
+                }
+                html.Front18-blur-active .Front18-smart-container-blurred > * {
+                    opacity: 0 !important; /* Oculta textos internos mantendo o background e altura */
+                    pointer-events: none !important;
+                    transition: opacity 0.3s ease !important;
+                }
+                html.Front18-blur-active .Front18-smart-container-blurred::before {
+                    content: "" !important;
+                    position: absolute !important;
+                    inset: 0 !important;
+                    z-index: 1000000 !important;
+                    backdrop-filter: blur(25px) grayscale(50%) saturate(0.5) !important;
+                    -webkit-backdrop-filter: blur(25px) grayscale(50%) saturate(0.5) !important;
+                    background: rgba(15, 23, 42, 0.4) !important;
+                }
+                html.Front18-blur-active .Front18-smart-container-blurred::after {
+                    content: "🔒 +18 SIGILOSO \\A VERIFICAÇÃO NECESSÁRIA" !important;
+                    white-space: pre !important;
+                    position: absolute !important;
+                    top: 50% !important;
+                    left: 50% !important;
+                    transform: translate(-50%, -50%) !important;
+                    z-index: 1000001 !important;
+                    background: rgba(15, 23, 42, 0.85) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    color: #f8fafc !important;
+                    padding: 10px 16px !important;
+                    border-radius: 12px !important;
+                    font-family: inherit !important;
+                    font-size: 11px !important;
+                    font-weight: 800 !important;
+                    text-align: center !important;
+                    line-height: 1.4 !important;
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+                    letter-spacing: 0.5px !important;
+                    pointer-events: none !important;
+                    transition: all 0.3s ease !important;
+                }
+                html.Front18-blur-active .Front18-smart-container-blurred:hover::after {
+                    background: #6366f1 !important;
+                    color: white !important;
+                    content: "🔓 LIBERAR ACESSO" !important;
+                    transform: translate(-50%, -50%) scale(1.05) !important;
                 }
                 
                 /* Blindagem para não afetar imagens internas do modal/banner DPO */
@@ -631,7 +676,7 @@
                     filter: none !important;
                 }
                 
-                /* Compatibilidade com as classes manipuladas via JS */
+                /* Compatibilidade com as tags nativas */
                 .Front18-media-blurred { filter: blur(25px) grayscale(50%) saturate(0.5) !important; cursor: pointer !important; transition: filter 0.5s ease !important; }
                 .Front18-media-blurred:hover { filter: blur(15px) grayscale(20%) saturate(0.8) !important; }
             `;
@@ -648,48 +693,60 @@
             // Em vez de processar elemento por elemento tarde demais, usamos css na tag raiz
             document.documentElement.classList.add('Front18-blur-active');
             
-            // Adiciona click events retrospectivos quando o DOM estiver desenhado
-            const medias = document.querySelectorAll('img, video, iframe, picture, [data-front18="locked"], [data-elementor-type="loop-item"], [data-settings*="background_background"], .wp-block-cover, .elementor-background-overlay');
-            medias.forEach(media => {
-                if(!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner')) {
-                    media.classList.add('Front18-media-blurred');
-                    
-                    const openModal = (e) => {
-                        if (e) { e.preventDefault(); e.stopPropagation(); }
-                        if(!document.getElementById('Front18-overlay')) {
-                            this.createOverlay(); this.createModal();
-                        } else {
-                            document.getElementById('Front18-overlay').classList.add('Front18-active');
-                        }
-                    };
-
-                    if (media.tagName === 'VIDEO') {
-                        // Trava rígida contra AutoPlay e Controls nativos
-                        media.pause();
-                        media.dataset.agControls = media.hasAttribute('controls') ? 'true' : 'false';
-                        media.removeAttribute('controls');
-                        media.addEventListener('play', (e) => {
-                            if (document.documentElement.classList.contains('Front18-blur-active')) {
-                                e.preventDefault(); media.pause(); openModal(e);
-                            }
-                        });
-                        media.addEventListener('click', openModal);
-                    } else if (media.tagName === 'IFRAME') {
-                        // Iframes engolem cliques. Desativamos eventos neles para o parent capturar.
-                        media.classList.add('Front18-iframe-shielded');
-                        media.style.pointerEvents = 'none';
-                        if (media.parentElement) {
-                            media.parentElement.addEventListener('click', (e) => {
+            const openModal = (e) => {
+                if (e) { e.preventDefault(); e.stopPropagation(); }
+                if(!document.getElementById('Front18-overlay')) {
+                    this.createOverlay(); this.createModal();
+                } else {
+                    document.getElementById('Front18-overlay').classList.add('Front18-active');
+                }
+            };
+            
+            // Reação dinâmica na Arvore do DOM (Atraso mínimo para Lazy Loads)
+            setTimeout(() => {
+                // 1. Tags Nativas (Blur Filtro Direto)
+                const rawMedias = document.querySelectorAll('img, video, iframe, picture, source');
+                rawMedias.forEach(media => {
+                    if(!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner')) {
+                        media.classList.add('Front18-media-blurred');
+                        
+                        if (media.tagName === 'VIDEO') {
+                            // Trava rígida contra AutoPlay e Controls nativos
+                            media.pause();
+                            media.dataset.agControls = media.hasAttribute('controls') ? 'true' : 'false';
+                            media.removeAttribute('controls');
+                            media.addEventListener('play', (e) => {
                                 if (document.documentElement.classList.contains('Front18-blur-active')) {
-                                    openModal(e);
+                                    e.preventDefault(); media.pause(); openModal(e);
                                 }
                             });
+                            media.addEventListener('click', openModal);
+                        } else if (media.tagName === 'IFRAME') {
+                            // Iframes engolem cliques. Desativamos eventos neles para o parent capturar.
+                            media.classList.add('Front18-iframe-shielded');
+                            media.style.pointerEvents = 'none';
+                            if (media.parentElement) {
+                                media.parentElement.addEventListener('click', (e) => {
+                                    if (document.documentElement.classList.contains('Front18-blur-active')) {
+                                        openModal(e);
+                                    }
+                                });
+                            }
+                        } else {
+                            media.addEventListener('click', openModal);
                         }
-                    } else {
-                        media.addEventListener('click', openModal);
                     }
-                }
-            });
+                });
+
+                // 2. Elementos Estruturais Modernos (Smart Blur Baseado Em Backdrop + Badge)
+                const smartContainers = document.querySelectorAll('[data-front18="locked"], [data-elementor-type="loop-item"], [data-settings*="background_background"], .wp-block-cover, .elementor-background-overlay');
+                smartContainers.forEach(container => {
+                    if(!container.closest('#Front18-overlay') && !container.closest('#Front18-privacy-banner')) {
+                        container.classList.add('Front18-smart-container-blurred');
+                        container.addEventListener('click', openModal);
+                    }
+                });
+            }, 50);
         },
 
         lockPage: function() {

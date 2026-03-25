@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     elseif ($action === 'create_plan') {
         $name = $_POST['name'];
-        $price = $_POST['price'];
+        $price = str_replace(',', '.', $_POST['price']);
         $max_dom = $_POST['max_dom'];
         $max_req = $_POST['max_req'];
         $allowed_level = isset($_POST['allowed_level']) ? (int)$_POST['allowed_level'] : 1;
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($action === 'edit_plan') {
         $plan_id = (int)$_POST['plan_id'];
         $name = $_POST['name'];
-        $price = $_POST['price'];
+        $price = str_replace(',', '.', $_POST['price']);
         $max_dom = $_POST['max_dom'];
         $max_req = $_POST['max_req'];
         $allowed_level = isset($_POST['allowed_level']) ? (int)$_POST['allowed_level'] : 1;
@@ -694,7 +694,7 @@ $suspicious = $pdo->query("
                                 <label class="block text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2 pl-1">Preço Mensal (BRL)</label>
                                 <div class="relative">
                                     <i class="ph-bold ph-currency-dollar absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 text-lg"></i>
-                                    <input type="number" step="0.01" name="price" required placeholder="Ex: 299.90" class="w-full bg-slate-900 border border-slate-800 text-white pl-12 pr-4 py-3.5 rounded-lg text-sm focus:border-emerald-500 focus:ring-1 outline-none transition-all font-mono">
+                                    <input type="text" inputmode="decimal" name="price" required placeholder="Ex: 299,90" class="w-full bg-slate-900 border border-slate-800 text-white pl-12 pr-4 py-3.5 rounded-lg text-sm focus:border-emerald-500 focus:ring-1 outline-none transition-all font-mono">
                                 </div>
                             </div>
                             <div>

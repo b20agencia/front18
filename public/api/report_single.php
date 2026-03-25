@@ -21,7 +21,7 @@ $userId = (int)$_SESSION['saas_admin'];
 $logId = (int)($_GET['log_id'] ?? 0);
 
 // Validação de Posse de Log (Prevenção de IDOR)
-$stmtLog = $pdo->prepare("SELECT * FROM access_logs WHERE id = ? AND client_id = ?");
+$stmtLog = $pdo->prepare("SELECT * FROM access_logs WHERE id = ? AND client_id IN (SELECT id FROM saas_origins WHERE user_id = ?)");
 $stmtLog->execute([$logId, $userId]);
 $log = $stmtLog->fetch(PDO::FETCH_ASSOC);
 

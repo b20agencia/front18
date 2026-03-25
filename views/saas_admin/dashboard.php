@@ -143,7 +143,7 @@ $chartCountsJson = json_encode($counts);
 $clientes = $pdo->query("
     SELECT u.*, 
     (SELECT COUNT(*) FROM saas_origins WHERE user_id = u.id) as total_domains,
-    (SELECT COUNT(*) FROM access_logs WHERE client_id = (SELECT id FROM saas_origins WHERE user_id = u.id LIMIT 1)) as client_hits
+    (SELECT COUNT(*) FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = u.id)) as client_hits
     FROM saas_users u WHERE u.role IN ('client', 'suspended') ORDER BY u.id DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 

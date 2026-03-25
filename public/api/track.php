@@ -115,7 +115,7 @@ $isTrial = !empty($clienteSaaS['is_trial']);
 if ($action !== 'config') {
     if ($isTrial) {
         $maxRequests = 200;
-        $stmtHits = $pdo->prepare("SELECT COUNT(*) FROM access_logs WHERE client_id = ?");
+        $stmtHits = $pdo->prepare("SELECT COUNT(*) FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = ?)");
         $stmtHits->execute([$clientId]);
         $currentHits = (int) $stmtHits->fetchColumn();
 
@@ -127,7 +127,7 @@ if ($action !== 'config') {
     } else {
         $maxRequests = (int)($clienteSaaS['max_requests_per_month'] ?? 150000);
         $currentMonth = date('Y-m');
-        $stmtHits = $pdo->prepare("SELECT COUNT(*) FROM access_logs WHERE client_id = ? AND DATE_FORMAT(created_at, '%Y-%m') = ?");
+        $stmtHits = $pdo->prepare("SELECT COUNT(*) FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = ?) AND DATE_FORMAT(created_at, '%Y-%m') = ?");
         $stmtHits->execute([$clientId, $currentMonth]);
         $currentHits = (int) $stmtHits->fetchColumn();
 
@@ -212,7 +212,7 @@ if ($action === 'verify') {
     }
 
     // Gravar a Prova Material Forense e habilitar a Sessão Jurídica (Backend Server State)
-    $sessaoBlockchain = (string) SessionManager::verifyUser($clientId, $aiAge, $aiConfidence);
+    $sessaoBlockchain = (string) SessionManager::verifyUser($domainId, $aiAge, $aiConfidence);
 
     echo json_encode([
         'success' => true, 
@@ -226,7 +226,7 @@ if ($action === 'verify') {
 // 2.1. ROTA /REJECT (Métrica de Queda do Funil)
 // ========================================================
 if ($action === 'reject') {
-    SessionManager::logAudit('REJECTED_CONSENT', $origin, $clientId);
+    SessionManager::logAudit('REJECTED_CONSENT', $origin, $domainId);
     echo json_encode(['success' => true, 'message' => 'Lead Negativo. Log de Rejeição Ativo Registrado.']);
     exit;
 }
@@ -261,7 +261,7 @@ if ($action === 'content') {
             <i class="ph-bold ph-check-circle text-5xl text-emerald-500 mb-4 block"></i>
             <h3 class="text-2xl font-bold text-white mb-2">Payload Liberado pela API!</h3>
             <p class="text-emerald-400 font-mono text-sm max-w-sm mx-auto mb-4 bg-emerald-500/10 p-3 rounded">
-                O seu PHP no (Front18.test) confirmou a Sessão Jurídica. Ele descriptografou tudo e enviou este texto pro Dominio (democliente.test)!
+                O seu PHP no (Front18.com) confirmou a Sessão Jurídica. Ele descriptografou tudo e enviou este texto pro Dominio Cliente!
             </p>
             <div class="grid grid-cols-2 gap-4">
                 <img src="https://images.unsplash.com/photo-1518779578993-ec3579fee39f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" style="border-radius:10px; width:100%; height:120px; object-fit:cover;">

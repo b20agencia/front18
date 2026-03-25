@@ -235,15 +235,15 @@ if (!$config) {
     $apiKey = $config['api_key'] ?? "ag_" . bin2hex(random_bytes(16));
     $domainId = $config['id'];
     
-    $totalAcessos = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE client_id = " . (int)$userId)->fetchColumn();
-    $acessos18 = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE client_id = " . (int)$userId . " AND action NOT LIKE 'BLOCKED_%'")->fetchColumn();
-    $myBlocks = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE client_id = " . (int)$userId . " AND action LIKE 'BLOCKED_%'")->fetchColumn();
-    $rejeitados = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE client_id = " . (int)$userId . " AND action = 'REJECTED_CONSENT'")->fetchColumn();
+    $totalAcessos = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = " . (int)$userId . ")")->fetchColumn();
+    $acessos18 = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = " . (int)$userId . ") AND action NOT LIKE 'BLOCKED_%'")->fetchColumn();
+    $myBlocks = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = " . (int)$userId . ") AND action LIKE 'BLOCKED_%'")->fetchColumn();
+    $rejeitados = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = " . (int)$userId . ") AND action = 'REJECTED_CONSENT'")->fetchColumn();
     
     $rate = $totalAcessos > 0 ? number_format(($acessos18 / $totalAcessos) * 100, 1) : "0.0";
     $taxaRejeicao = $totalAcessos > 0 ? number_format(($rejeitados / $totalAcessos) * 100, 1) : "0.0";
     
-    $stmtLogs = $pdo->prepare("SELECT * FROM access_logs WHERE client_id = ? ORDER BY id DESC LIMIT 50");
+    $stmtLogs = $pdo->prepare("SELECT * FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = ?) ORDER BY id DESC LIMIT 50");
     $stmtLogs->execute([$userId]);
     $recentLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
 

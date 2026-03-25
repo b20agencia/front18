@@ -36,7 +36,7 @@ if (!$origin) {
 $query = "SELECT * FROM access_logs WHERE client_id = ? "; 
 $query .= "AND siteOrigin LIKE ? ";
 $cleanDomain = str_replace(['http://', 'https://', 'www.'], '', trim($origin['domain'], '/'));
-$params = [$userId, '%' . $cleanDomain . '%'];
+$params = [$domainId, '%' . $cleanDomain . '%'];
 
 if ($period !== 'all' && preg_match('/^\d{4}-\d{2}$/', $period)) {
     $query .= "AND DATE_FORMAT(created_at, '%Y-%m') = ? ";

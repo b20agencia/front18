@@ -6,6 +6,10 @@
  */
     // Geração dinâmica perfeita independente de Laragon, CPanel, Subpastas ou Root DNS
     $basePath = str_replace('\\', '/', rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')) . '/';
+    // Fix para o servidor nativo local (php -S) que executa da raiz do projeto:
+    if ($basePath === '/' && is_dir(__DIR__ . '/../../public')) {
+        $basePath = '/public/';
+    }
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

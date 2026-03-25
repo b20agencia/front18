@@ -411,7 +411,7 @@ $myOrigins = $myOrigins ?? [];
             <a href="?route=dashboard&cancel_impersonate=1" class="underline ml-2 hover:text-indigo-200 bg-black/20 px-3 py-1 rounded">Encerrar Sessão de Suporte</a>
         </div>
         <?php endif; ?>
-        <?php if (!empty($user['is_trial'])): ?>
+        <?php if (!empty($user['is_trial']) && empty($user['plan_id'])): ?>
             <?php 
                 $requestsLeft = max(0, 200 - $totalAcessos);
             ?>

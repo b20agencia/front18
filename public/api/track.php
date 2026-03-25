@@ -106,6 +106,15 @@ if ($originClean && $clienteSaaS) {
     $originCleanNoWww = str_replace('www.', '', $originClean);
     $domainNoWww = str_replace(['https://', 'http://', 'www.'], '', $clienteSaaS['domain']);
     
+    // Se a requisição veio de dentro do nosso iframe hospedado no front18.com, 
+    // validamos o site pai (host_site) injetado no payload do app.js
+    if ($originCleanNoWww === 'front18.com' || $originCleanNoWww === 'b20robots.com.br') {
+        $inputDataTest = json_decode(file_get_contents('php://input'), true);
+        if (!empty($inputDataTest['host_site']) && $inputDataTest['host_site'] !== 'Acesso Direto') {
+            $originCleanNoWww = str_replace(['https://', 'http://', 'www.'], '', strtolower(trim($inputDataTest['host_site'])));
+        }
+    }
+
     // Libera testes locais, mas no servidor de produção exige pareamento idêntico!
     if ($originCleanNoWww !== 'localhost' && $originCleanNoWww !== '127.0.0.1') {
         if ($originCleanNoWww !== $domainNoWww) {

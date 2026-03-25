@@ -99,27 +99,28 @@ if (isset($_GET['impersonate'])) {
 // ==========================================
 // DATA FETCHING (DASHBOARD METRICS GLOBALS)
 // ==========================================
-$totalClientes = $pdo->query("SELECT COUNT(*) FROM saas_users WHERE role = 'client'")->fetchColumn();
-$totalLogs = $pdo->query("SELECT COUNT(*) FROM access_logs")->fetchColumn();
-$totalBlocked = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE action LIKE 'BLOCKED_%'")->fetchColumn();
-$activeDomains = $pdo->query("SELECT COUNT(*) FROM saas_origins WHERE is_active = 1")->fetchColumn();
+$totalClientes = ($stmt = $pdo->query("SELECT COUNT(*) FROM saas_users WHERE role = 'client'")) ? $stmt->fetchColumn() : 0;
+$totalLogs = ($stmt = $pdo->query("SELECT COUNT(*) FROM access_logs")) ? $stmt->fetchColumn() : 0;
+$totalBlocked = ($stmt = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE action LIKE 'BLOCKED_%'")) ? $stmt->fetchColumn() : 0;
+$activeDomains = ($stmt = $pdo->query("SELECT COUNT(*) FROM saas_origins WHERE is_active = 1")) ? $stmt->fetchColumn() : 0;
 
 // Crescimento
-$todayHits = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE DATE(created_at) = CURDATE()")->fetchColumn();
+$todayHits = ($stmt = $pdo->query("SELECT COUNT(*) FROM access_logs WHERE DATE(created_at) = CURDATE()")) ? $stmt->fetchColumn() : 0;
 $growth = $todayHits > 100 ? "+12.4%" : "+0.0%"; 
 
 // MRR e Financeiro
 $stmtMRR = $pdo->query("SELECT SUM(p.price) FROM saas_users u JOIN plans p ON u.plan_id = p.id WHERE u.role = 'client'");
-$totalMRR = (float)$stmtMRR->fetchColumn(); 
+$totalMRR = $stmtMRR ? (float)$stmtMRR->fetchColumn() : 0.0; 
 
 // Data mining para Gráfico (Últimos 14 Dias)
-$chartDataQuery = $pdo->query("
+$chartStmt = $pdo->query("
     SELECT DATE(created_at) as data_log, COUNT(*) as qtd
     FROM access_logs 
     WHERE created_at >= DATE(NOW()) - INTERVAL 13 DAY
     GROUP BY DATE(created_at)
     ORDER BY DATE(created_at) ASC
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$chartDataQuery = $chartStmt ? $chartStmt->fetchAll(PDO::FETCH_ASSOC) : [];
 
 $dates = [];
 $counts = [];
@@ -140,27 +141,31 @@ $chartDatesJson = json_encode($dates);
 $chartCountsJson = json_encode($counts);
 
 // Lista Clientes
-$clientes = $pdo->query("
+$stmtCLI = $pdo->query("
     SELECT u.*, 
     (SELECT COUNT(*) FROM saas_origins WHERE user_id = u.id) as total_domains,
     (SELECT COUNT(*) FROM access_logs WHERE client_id IN (SELECT id FROM saas_origins WHERE user_id = u.id)) as client_hits
     FROM saas_users u WHERE u.role IN ('client', 'suspended') ORDER BY u.id DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$clientes = $stmtCLI ? $stmtCLI->fetchAll(PDO::FETCH_ASSOC) : [];
 
 // Lista Domínios
-$dominios = $pdo->query("
+$stmtDOM = $pdo->query("
     SELECT d.*, u.email as dono_email,
     (SELECT COUNT(*) FROM access_logs WHERE client_id = d.id) as hits
     FROM saas_origins d 
     LEFT JOIN saas_users u ON d.user_id = u.id
     ORDER BY hits DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$dominios = $stmtDOM ? $stmtDOM->fetchAll(PDO::FETCH_ASSOC) : [];
 
 // Logs Globais Recentes
-$logs = $pdo->query("SELECT a.*, d.domain FROM access_logs a LEFT JOIN saas_origins d ON a.client_id = d.id ORDER BY a.id DESC LIMIT 30")->fetchAll(PDO::FETCH_ASSOC);
+$stmtLOG = $pdo->query("SELECT a.*, d.domain FROM access_logs a LEFT JOIN saas_origins d ON a.client_id = d.id ORDER BY a.id DESC LIMIT 30");
+$logs = $stmtLOG ? $stmtLOG->fetchAll(PDO::FETCH_ASSOC) : [];
 
 // Planos
-$planos = $pdo->query("SELECT * FROM plans ORDER BY price ASC")->fetchAll(PDO::FETCH_ASSOC);
+$stmtPLA = $pdo->query("SELECT * FROM plans ORDER BY price ASC");
+$planos = $stmtPLA ? $stmtPLA->fetchAll(PDO::FETCH_ASSOC) : [];
 
 // Monitoramento Suspeito
 $stmtSus = $pdo->query("
@@ -514,7 +519,7 @@ $suspicious = $stmtSus ? $stmtSus->fetchAll(PDO::FETCH_ASSOC) : [];
                             <?php else: foreach($dominios as $dom): ?>
                             <tr class="border-b border-slate-800/30 hover:bg-slate-900/50">
                                 <td class="py-4 font-mono font-bold text-white"><i class="ph-bold ph-globe text-primary-400 mr-1"></i> <?= htmlspecialchars($dom['domain']) ?></td>
-                                <td class="py-4 text-slate-400"><?= htmlspecialchars($dom['dono_email']) ?></td>
+                                <td class="py-4 text-slate-400"><?= htmlspecialchars($dom['dono_email'] ?? 'Desconhecido') ?></td>
                                 <td class="py-4">
                                     <?php if(!empty($dom['wp_url'])): ?>
                                         <a href="<?= htmlspecialchars($dom['wp_url']) ?>" target="_blank" class="text-blue-400 underline text-[10px] flex items-center gap-1"><i class="ph-bold ph-link"></i> WP Configurado</a>
@@ -562,16 +567,16 @@ $suspicious = $stmtSus ? $stmtSus->fetchAll(PDO::FETCH_ASSOC) : [];
                             <tbody class="text-slate-400">
                                 <?php foreach($logs as $log): ?>
                                 <tr class="border-b border-slate-800/30 hover:bg-slate-800/50">
-                                    <td class="px-6 py-3"><?= htmlspecialchars($log['created_at']) ?></td>
+                                    <td class="px-6 py-3"><?= htmlspecialchars($log['created_at'] ?? 'Data Desconhecida') ?></td>
                                     <td class="px-6 py-3 text-slate-300"><?= htmlspecialchars($log['domain'] ?? 'N/A') ?></td>
                                     <td class="px-6 py-3">
-                                        <?php if(str_starts_with($log['action'], 'BLOCKED')): ?>
-                                            <span class="text-red-400 font-bold"><?= $log['action'] ?></span>
+                                        <?php if(strpos($log['action'] ?? '', 'BLOCKED') === 0): ?>
+                                            <span class="text-red-400 font-bold"><?= htmlspecialchars($log['action'] ?? 'Unknown View') ?></span>
                                         <?php else: ?>
-                                            <span class="text-emerald-400"><?= $log['action'] ?></span>
+                                            <span class="text-emerald-400"><?= htmlspecialchars($log['action'] ?? 'Unknown View') ?></span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="px-6 py-3"><?= htmlspecialchars($log['ip_address']) ?></td>
+                                    <td class="px-6 py-3"><?= htmlspecialchars($log['ip_address'] ?? '0.0.0.0') ?></td>
                                     <td class="px-6 py-3 text-slate-600 truncate max-w-[200px]" title="<?= htmlspecialchars($log['current_hash'] ?? 'Aguardando CRON') ?>"><?= htmlspecialchars($log['current_hash'] ?? 'Aguardando CRON') ?></td>
                                 </tr>
                                 <?php endforeach; ?>

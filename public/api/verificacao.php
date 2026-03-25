@@ -1,5 +1,6 @@
 <?php
-    $basePath = (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false) ? '/public/' : '/';
+    // Geração dinâmica perfeita independente de Laragon, CPanel, Subpastas ou Root DNS
+    $basePath = str_replace('\\', '/', rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')) . '/';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

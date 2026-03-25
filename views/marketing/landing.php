@@ -222,7 +222,7 @@ try {
 
         <style>
             @keyframes f18DemoSpin { to { transform: rotate(360deg); } }
-            @media (max-width: 900px) { #demo-grid { grid-template-columns: 1fr !important; } }
+            @media (max-width: 900px) { #demo-grid, #footer-grid { grid-template-columns: 1fr !important; } }
         </style>
         <script>
             function f18DemoUnlockFake(el) {
@@ -306,7 +306,7 @@ try {
                <div style="text-align:center;width:100%;color:red;">Não há planos configurados no banco de dados do SaaS.</div>
             <?php else: ?>
                 <?php foreach($planos as $idx => $plan): 
-                      $isFeatured = (trim(strtolower($plan['name'])) === 'pro');
+                      $isFeatured = !empty($plan['is_featured']);
                       $priceFmt = number_format($plan['price'], 0, ',', '.');
                       $limitFmt = number_format($plan['max_requests_per_month'], 0, ',', '.');
                 ?>
@@ -388,6 +388,7 @@ try {
                 <div class="faq-a"><p>Não armazenamos imagens, jamais. Operamos 100% sobre uma rede Edge-SaaS. Nosso script joga as fórmulas matemáticas no chip do celular do usuário, tritura os pixels de cor e devolve apenas os percentuais numéricos para nossos datacenters mascararem o IP final e arquivarem a concordância de forma complacente com a LGPD.</p></div>
             </div>
 
+            </div>
         </div>
     </section>
 
@@ -401,7 +402,7 @@ try {
     <footer style="background: #000; border-top: 1px solid var(--border-color); padding: 5rem 5% 2rem; margin-top: 0; color: var(--text-secondary);">
         <div style="max-width: 1200px; margin: 0 auto;">
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; padding-bottom: 4rem; border-bottom: 1px solid var(--border-color);">
+            <div id="footer-grid" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; padding-bottom: 4rem; border-bottom: 1px solid var(--border-color);">
                 <div>
                     <a href="?route=landing" style="display: inline-block; margin-bottom: 0.5rem;">
                         <img src="public/img/logo.png" alt="Front18 Logo" style="height: 28px; object-fit: contain;">

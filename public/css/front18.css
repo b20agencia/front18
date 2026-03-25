@@ -119,7 +119,7 @@ nav {
 .plan-card { background: var(--bg-surface); padding: 2.5rem 2rem; border: 1px solid var(--border-color); position: relative; display: flex; flex-direction: column; border-radius: 12px; transition: transform 0.3s ease, border-color 0.3s ease; }
 .plan-card:hover { transform: translateY(-5px); border-color: rgba(234, 89, 68, 0.4); }
 .plan-card.highlight { border-color: var(--accent-red); box-shadow: 0 10px 30px rgba(234, 89, 68, 0.1); }
-.plan-card.highlight::after { content: 'Mais Popular'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent-red); color: #fff; padding: 4px 12px; font-weight: 700; font-family: var(--font-display); font-size: 0.75rem; text-transform: uppercase; border-radius: 20px; letter-spacing: 0.5px; }
+.plan-card.highlight::after { content: 'Melhor Plano'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent-red); color: #fff; padding: 4px 12px; font-weight: 700; font-family: var(--font-display); font-size: 0.75rem; text-transform: uppercase; border-radius: 20px; letter-spacing: 0.5px; }
 .plan-price { font-size: 2.2rem; font-family: var(--font-display); font-weight: 700; margin: 1rem 0; color: #fff; }
 .plan-price span { font-size: 0.85rem; color: var(--text-secondary); font-weight: 400; }
 .plan-features { list-style: none; margin: 1.5rem 0 2.5rem; flex-grow: 1; }

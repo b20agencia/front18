@@ -1,3 +1,8 @@
+-- =========================================================
+-- Arquivo: database_schema.sql | Estrutura Inicial do Banco de Dados Legado
+-- @author Documentado por Gil Santos e Leandro Satt
+-- @projeto Front18 Pro SaaS Architecture
+-- =========================================================
 -- AgeGate Pro - Sistema de Banco de Dados Oficial
 -- Desenvolvido para Alta Escalabilidade (SaaS)
 

@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: docs.php | Central de Ajuda e SDK Docs Disponível para os Clientes
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['saas_admin']) || $_SESSION['saas_role'] !== 'client') {
     header("Location: ?route=login");

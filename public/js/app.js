@@ -1,3 +1,8 @@
+/* =========================================================
+   Arquivo: app.js | Lógica Core em Javascript (Motor de Câmera, IA Facial Front-end e Fluxos Liveness)
+   @author Documentado por Gil Santos e Leandro Satt
+   @projeto Front18 Pro SaaS Architecture
+========================================================= */
 const video = document.getElementById('camera');
 const verifyBtn = document.getElementById('verifyBtn');
 const statusMessage = document.getElementById('statusMessage');

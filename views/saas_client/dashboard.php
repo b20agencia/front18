@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: dashboard.php | UI Painel B2B do Cliente Final Assinante (Análise de Gráficos e Configurações API)
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['saas_admin']) || $_SESSION['saas_role'] !== 'client') {
     header("Location: ?route=login");

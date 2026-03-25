@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: landing.php | Página de Captura (Landing Page) Responsável pelo MKT e Seleção de Planos
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 require_once __DIR__ . '/../../src/Config/config.php';
 require_once __DIR__ . '/../../src/Core/Database.php';
 try {

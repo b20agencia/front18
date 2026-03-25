@@ -1,3 +1,8 @@
+/* =========================================================
+   Arquivo: front18-injector.js | Script Injetável B2B que entra ativamente nos sites dos clientes SaaS
+   @author Documentado por Gil Santos e Leandro Satt
+   @projeto Front18 Pro SaaS Architecture
+========================================================= */
 /**
  * FRONT18 - INJECTOR SCRIPT v3.0 (Production Ready)
  * ─────────────────────────────────────────────────────────────────────────

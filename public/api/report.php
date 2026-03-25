@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: report.php | Motor de Geração de Relatórios LGPD em Lote
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * Emissor Oficial de Relatórios Forenses - Front18 SaaS
  */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }

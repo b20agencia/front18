@@ -1,3 +1,10 @@
+<?php
+/**
+ * Arquivo: security.php | Controlador de Escudos Perimetrais WAF (Web Application Firewall)
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>

@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: config.php | Configurações Globais, Credenciais de Banco e Criptografia Master
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * AgeGate Configurações Globais (Nível Enterprise SaaS)
  */
 

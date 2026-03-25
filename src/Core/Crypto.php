@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: Crypto.php | Motor de Criptografia Descentralizada e XOR para blindagem de pacotes
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * Motor Criptográfico Leve de Injeção em Rede (XOR Engine)
  */
 class Crypto {

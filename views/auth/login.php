@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: login.php | UI de Login do Sistema de Clientes (Auth Gate)
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 if (isset($_GET['logout'])) {

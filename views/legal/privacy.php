@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: privacy.php | UI da Política de Privacidade Transparente da Front18
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 // Front18 Pro - Política de Privacidade e Mapeamento de Cookies (LGPD/GDPR)
 ?>
 <!DOCTYPE html>

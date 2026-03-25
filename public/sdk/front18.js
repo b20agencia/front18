@@ -1,3 +1,8 @@
+/* =========================================================
+   Arquivo: front18.js | Software Development Kit Nativo. Core do Widget instalado pelos assinantes
+   @author Documentado por Gil Santos e Leandro Satt
+   @projeto Front18 Pro SaaS Architecture
+========================================================= */
 /**
  * Front18 Pro - Nível SecMaster (Sessão Server-Side + XOR Rendering Oculto)
  * 

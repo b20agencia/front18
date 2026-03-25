@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: dossie.php | UI do Histórico do Dossiê Criptográfico Individual (Provas Forenses)
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['saas_admin'])) {
     die("<h1>Acesso Negado</h1><p>A extração de Relatórios Técnicos requer autenticação administrativa.</p>");

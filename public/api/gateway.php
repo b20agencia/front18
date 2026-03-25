@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: gateway.php | Gateway da API Edge responsável por validar requisições B2B
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * Router de Integração da API 
  * Preparado para SaaS Cross-Domain (CORS Dinâmico)
  */

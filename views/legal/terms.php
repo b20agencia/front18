@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: terms.php | UI Termos de Serviço e Condições de Uso B2B
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 // Front18 Pro - Termos de Uso e Responsabilidade B2B
 ?>
 <!DOCTYPE html>

@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: SessionManager.php | Gerenciador Avançado de Sessões (Session Fixation, Hijacking Shield)
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * Guardião de Autorização via Cookies PHPSESSID Customizados (Server-Side Trust)
  * Controla Duração, Criação e Quebra de acesso pra Requests Fraudulentas.
  */

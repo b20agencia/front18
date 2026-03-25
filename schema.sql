@@ -1,3 +1,8 @@
+-- =========================================================
+-- Arquivo: schema.sql | Estrutura Inicial do Banco de Dados (Seed e Tabelas) do Front18
+-- @author Documentado por Gil Santos e Leandro Satt
+-- @projeto Front18 Pro SaaS Architecture
+-- =========================================================
 -- ==========================================================
 -- Instalação Manual Front18 MasterHub (cPanel / phpMyAdmin)
 -- ==========================================================

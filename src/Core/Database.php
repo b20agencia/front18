@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: Database.php | Conexão PDO via Singleton e Funções Auxiliares de BD
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * Padrão Singleton de Conexão PDO
  * Garante que abrimos apenas 1 conexão MySQL durante toda a execução da API.
  */

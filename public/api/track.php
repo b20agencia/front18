@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: track.php | Endpoint de Tracking de Logs Biométricos e Bloqueios
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * Front18 B2B API Engine - O Coração do SaaS
  * Ingestão de Logs, WAF e Autoridade Cross-Domain via CORS.
  */

@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: report_single.php | Gerador Unitário de Dossiês Criptografados Funcionais (PDF/JSON)
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * Laudo Forense Singular (Relatório Especializado para 1 Sessão)
  */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }

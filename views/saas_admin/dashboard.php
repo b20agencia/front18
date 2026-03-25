@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: dashboard.php | UI God Mode: Painel Geral Operacional para o Super Admin Global
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 // Bloqueio vital - Apenas SuperAdmin
 if (empty($_SESSION['saas_admin']) || $_SESSION['saas_role'] !== 'superadmin') {

@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: verificacao.php | Endpoint central para verificação de Liveness (FaceID)
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
     // Geração dinâmica perfeita independente de Laragon, CPanel, Subpastas ou Root DNS
     $basePath = str_replace('\\', '/', rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')) . '/';
 ?>

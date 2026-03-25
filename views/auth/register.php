@@ -1,4 +1,9 @@
 <?php
+/**
+ * Arquivo: register.php | UI de Registro/Criação de Conta para Novos Assinantes
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (isset($_SESSION['saas_admin'])) {
     if ($_SESSION['saas_role'] === 'client') {

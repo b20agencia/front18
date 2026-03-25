@@ -1,3 +1,8 @@
+/* =========================================================
+   Arquivo: gsap-anim.js | Biblioteca/Script responsável por animações fluidas via GSAP na Interface
+   @author Documentado por Gil Santos e Leandro Satt
+   @projeto Front18 Pro SaaS Architecture
+========================================================= */
 document.addEventListener("DOMContentLoaded", (event) => {
     // Registra Plugin ScrollTrigger (Obrigatório caso importemos de modo isolado)
     gsap.registerPlugin(ScrollTrigger);

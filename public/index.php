@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: index.php | Gateway de Entrada Pública do Servidor Frontal
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * AgeGate Pro - Front Controller (Router Principal)
  * Todas as requisições HTTPS batem inicialmente aqui.
  */

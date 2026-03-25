@@ -1,5 +1,10 @@
 <?php
 /**
+ * Arquivo: safe.php | Página de Saída de Segurança Institucional (Deny Route Fallback)
+ * @author Documentado por Gil Santos e Leandro Satt
+ * @projeto Front18 Pro SaaS Architecture
+ */
+/**
  * Safe Exit Page - Fallback Neutro e Premium para Menores
  */
 ?>

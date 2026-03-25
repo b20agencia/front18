@@ -39,7 +39,7 @@
             mode: 'global_lock', // 'global_lock' (bloqueia o site inteiro) ou 'blur_media' (borra mídias e espera clique)
             
             secureMode: false,
-            apiEndpoint: '/api/track.php',
+            apiEndpoint: 'https://front18.com/public/api/track.php',
             dynamicTarget: '[data-Front18="locked"]', 
             seoSafe: true, 
 
@@ -512,6 +512,7 @@
             if (this.config.mode === 'blur_media') {
                 this.blurMediaInstead();
                 this.startObserver();
+                this.releaseWPShield(); // Remove o escudo anti-flicker imediatamente para não causar tela branca
             } else {
                 this.lockPage();
                 this.createOverlay();

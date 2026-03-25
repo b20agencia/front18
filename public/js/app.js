@@ -14,7 +14,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const currentClient = window.__F18_CLIENT_ID || urlParams.get('client') || "TEST_CONSOLE_CLIENT";
 const isContentMode = window.__F18_MODE === 'content' || urlParams.get('mode') === 'content';
 const protectionLevel = window.__F18_PROTECTION_LEVEL || 'medium';
-const serverURL = window.__F18_SERVER_URL || 'https://front18.b20robots.com.br';
+const serverURL = window.__F18_SERVER_URL || 'https://front18.com';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
 

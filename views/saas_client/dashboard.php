@@ -68,14 +68,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM saas_origins WHERE user_id = ?");
         $stmtCount->execute([$userId]);
         
-        if ((int)$stmtCount->fetchColumn() < $maxDomains) {
+        $originCount = (int)$stmtCount->fetchColumn();
+        if ($originCount >= $maxDomains) {
+            $_SESSION['dashboard_error'] = "⚠️ O limite do seu Plano atual é de $maxDomains domínio(s). Faça o upgrade ou entre em contato com o suporte.";
+        } else {
             $newKey = 'SaaS_' . strtoupper(substr(md5(uniqid()), 0, 16)) . rand(10,99);
             try { 
                 $stmt = $pdo->prepare("INSERT INTO saas_origins (user_id, domain, api_key, protection_level, anti_scraping, seo_safe, is_active) VALUES (?, ?, ?, 1, 0, 0, 1)");
                 $stmt->execute([$userId, $domain_url, $newKey]);
-            } catch(\PDOException $e) {}
+                $_SESSION['dashboard_success'] = "Domínio '$domain_url' adicionado com sucesso!";
+            } catch(\PDOException $e) {
+                if (strpos($e->getMessage(), '1062 Duplicate entry') !== false) {
+                    $_SESSION['dashboard_error'] = "❌ O domínio '$domain_url' já foi registrado na base.";
+                } else {
+                    $_SESSION['dashboard_error'] = "Erro de integridade de banco de dados temporário.";
+                }
+            }
         }
     }
+    header("Location: ?route=dashboard#domains");
+    exit;
+}
+
+// Remover Domínio (Libera Franquia de Limite de Planos)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_domain') {
+    $domainIdToDelete = (int)$_POST['domain_id'];
+    
+    // Verifica propriedade p/ Segurança
+    $stmtCheck = $pdo->prepare("SELECT id, domain FROM saas_origins WHERE id = ? AND user_id = ?");
+    $stmtCheck->execute([$domainIdToDelete, $userId]);
+    $ownDomain = $stmtCheck->fetch();
+
+    if ($ownDomain) {
+        $pdo->prepare("DELETE FROM access_logs WHERE client_id = ?")->execute([$domainIdToDelete]);
+        $pdo->prepare("DELETE FROM saas_origins WHERE id = ?")->execute([$domainIdToDelete]);
+        $_SESSION['dashboard_success'] = "O domínio '{$ownDomain['domain']}' e toda a prova material vinculada a ele foram Destruídos. Franquia Liberada.";
+    } else {
+        $_SESSION['dashboard_error'] = "Ação não permitida.";
+    }
+    
     header("Location: ?route=dashboard#domains");
     exit;
 }
@@ -182,8 +213,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $pushStatus = false;
     $pushMsg = "URL não definida.";
     if (!empty($wp_url)) {
-        $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg FROM saas_origins WHERE user_id = ? LIMIT 1");
-        $stmtOrigin->execute([$userId]);
+        $wp_url_clean = str_replace(['https://', 'http://', 'www.'], '', $wp_url);
+        $wp_url_clean = rtrim(explode('/', $wp_url_clean)[0], '/');
+
+        $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg FROM saas_origins WHERE user_id = ? AND domain LIKE ? LIMIT 1");
+        $stmtOrigin->execute([$userId, "%$wp_url_clean%"]);
         $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
         
         if ($origin && $origin['api_key']) {
@@ -647,6 +681,18 @@ $myOrigins = $myOrigins ?? [];
                     <p class="text-slate-400 text-sm leading-relaxed">Na Arquitetura SaaS do Front18 você não precisa ficar desenhando infraestrutura nativa nem conectando IPs. Basta <strong>Adicionar a URL do seu Site</strong> abaixo para que nosso cérebro gere uma <strong class="text-primary-400">Chave de API única (Token Criptográfico)</strong>. Use essa chave lá no seu site (via Plugin WordPress ou HTML) e seu Domínio estará super protegido e sincronizado conosco!</p>
                 </div>
                 
+                <?php if(isset($_SESSION['dashboard_error'])): ?>
+                    <div class="bg-red-500/10 border border-red-500/30 text-red-500 px-4 py-3 rounded-xl mb-6 flex items-center justify-center gap-2 max-w-3xl mx-auto shadow-lg shadow-red-500/10">
+                        <i class="ph-bold ph-warning text-lg"></i> <span><?= htmlspecialchars($_SESSION['dashboard_error']) ?></span>
+                    </div>
+                <?php unset($_SESSION['dashboard_error']); endif; ?>
+
+                <?php if(isset($_SESSION['dashboard_success'])): ?>
+                    <div class="bg-primary-500/10 border border-primary-500/30 text-primary-400 px-4 py-3 rounded-xl mb-6 flex items-center justify-center gap-2 max-w-3xl mx-auto shadow-lg shadow-primary-500/10">
+                        <i class="ph-bold ph-check-circle text-lg"></i> <span><?= htmlspecialchars($_SESSION['dashboard_success']) ?></span>
+                    </div>
+                <?php unset($_SESSION['dashboard_success']); endif; ?>
+                
                 <!-- Didática + Formulário Mestre -->
                 <form method="POST" class="glass-panel p-8 rounded-3xl mb-12 border border-primary-500/20 relative overflow-hidden" onsubmit="this.querySelector('button').innerHTML='Provisionando...';">
                     <input type="hidden" name="action" value="add_domain">
@@ -691,9 +737,16 @@ $myOrigins = $myOrigins ?? [];
                             <button class="text-slate-400 group-hover:text-primary-400 transition-colors"><i class="ph-bold ph-copy"></i></button>
                         </div>
                         
-                        <div class="flex items-center gap-4 text-sm mt-4 border-t border-slate-800 pt-4">
-                            <button onclick="switchTab('settings')" class="text-slate-400 hover:text-white font-bold flex items-center gap-1"><i class="ph-bold ph-gear"></i> Setup Legal</button>
-                            <button onclick="switchTab('api')" class="text-indigo-400 hover:text-white font-bold flex items-center gap-1"><i class="ph-bold ph-code"></i> Implantação</button>
+                        <div class="flex flex-wrap items-center justify-between gap-4 text-sm mt-4 border-t border-slate-800 pt-4">
+                            <div class="flex items-center gap-4">
+                                <button onclick="switchTab('settings')" class="text-slate-400 hover:text-white font-bold flex items-center gap-1"><i class="ph-bold ph-gear"></i> Setup Legal</button>
+                                <button onclick="switchTab('api')" class="text-indigo-400 hover:text-white font-bold flex items-center gap-1"><i class="ph-bold ph-code"></i> Implantação</button>
+                            </div>
+                            <form method="POST" onsubmit="return confirm('ATENÇÃO: Deletar a propriedade revoga imediatamente essa API Key e exclui todas as provas forenses ligadas a ela do banco. Deseja continuar?');">
+                                <input type="hidden" name="action" value="delete_domain">
+                                <input type="hidden" name="domain_id" value="<?= $orig['id'] ?>">
+                                <button type="submit" class="text-red-500 hover:text-red-400 font-bold flex items-center gap-1 bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded transition-colors"><i class="ph-bold ph-trash"></i> Excluir</button>
+                            </form>
                         </div>
                     </div>
                     <?php endforeach; endif; ?>

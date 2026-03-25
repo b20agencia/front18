@@ -7,7 +7,7 @@
  * FRONT18 - INJECTOR SCRIPT v3.0 (Production Ready)
  * ─────────────────────────────────────────────────────────────────────────
  * INSTALAÇÃO:
- *   <script src="https://front18.b20robots.com.br/js/front18-injector.js"
+ *   <script src="https://front18.com/js/front18-injector.js"
  *           data-client="SEU_CLIENT_ID" async></script>
  *
  * MODOS:
@@ -31,7 +31,7 @@
     var urlFull    = new URLSearchParams(window.location.search).get('full') === '1';
 
     // Resolve dinamicamente de onde o script foi carregado para setar a URL da API B2B
-    var APP_URL = scriptTag && scriptTag.src ? new URL(scriptTag.src).origin : 'https://front18.b20robots.com.br';
+    var APP_URL = scriptTag && scriptTag.src ? new URL(scriptTag.src).origin : 'https://front18.com';
 
     // ── Chaves de sessão ──────────────────────────────────────────────────
     var SESSION_KEY  = 'f18_gate_ok_' + clientId;

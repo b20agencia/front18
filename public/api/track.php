@@ -98,7 +98,22 @@ $clienteSaaS = $stmt->fetch();
 if (!$clienteSaaS) {
     if ($origin) { header("Access-Control-Allow-Origin: $origin"); }
     http_response_code(403);
-    die(json_encode(['success' => false, 'error' => "API Key Inválida ou Origem não registrada na Hub do Cliente B2B SaaS."]));
+    die(json_encode(['success' => false, 'error' => "API Key Inválida na Hub do Cliente B2B SaaS."]));
+}
+
+// VALIDAÇÃO ESTRITA DE ROUBO DE CHAVE (Evitar reciclagem de API Key em múltiplos domínios)
+if ($originClean && $clienteSaaS) {
+    $originCleanNoWww = str_replace('www.', '', $originClean);
+    $domainNoWww = str_replace(['https://', 'http://', 'www.'], '', $clienteSaaS['domain']);
+    
+    // Libera testes locais, mas no servidor de produção exige pareamento idêntico!
+    if ($originCleanNoWww !== 'localhost' && $originCleanNoWww !== '127.0.0.1') {
+        if ($originCleanNoWww !== $domainNoWww) {
+            if ($origin) { header("Access-Control-Allow-Origin: $origin"); }
+            http_response_code(403);
+            die(json_encode(['success' => false, 'error' => "B2B WAF: Token de API não pertence ao domínio originador ($originCleanNoWww). Acesso bloqueado para evitar evasão de licença."]));
+        }
+    }
 }
 
 if ($clienteSaaS['is_active'] == 0) {

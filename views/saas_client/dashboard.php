@@ -1500,10 +1500,10 @@ $myOrigins = $myOrigins ?? [];
                                             <div class="text-xs font-bold text-red-400 mb-1 border-b border-red-900/30 pb-1 flex items-center gap-1"><i class="ph-bold ph-warning"></i> <?= htmlspecialchars($rpt['violation_type']) ?></div>
                                         <?php endif; ?>
                                         <?php if(!empty($rpt['content_url'])): ?>
-                                            <div class="text-xs text-blue-400 mb-2 truncate max-w-sm"><a href="<?= htmlspecialchars($rpt['content_url']) ?>" target="_blank" class="hover:underline"><?= htmlspecialchars($rpt['content_url']) ?></a></div>
+                                            <div class="text-xs text-blue-400 mb-2 truncate max-w-sm"><a href="<?= htmlspecialchars($rpt['content_url'] ?? '') ?>" target="_blank" class="hover:underline"><?= htmlspecialchars($rpt['content_url'] ?? '') ?></a></div>
                                         <?php endif; ?>
                                         <div class="text-sm text-slate-300 bg-slate-950 p-3 rounded border border-slate-800 max-h-32 overflow-y-auto w-full max-w-sm leading-relaxed">
-                                            <?= nl2br(htmlspecialchars($rpt['report_message'])) ?>
+                                            <?= nl2br(htmlspecialchars($rpt['report_message'] ?? '')) ?>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right">

@@ -501,6 +501,7 @@ $suspicious = $pdo->query("
                             <tr class="text-slate-500">
                                 <th class="pb-3 uppercase font-black tracking-widest text-[10px]">URL Host</th>
                                 <th class="pb-3 uppercase font-black tracking-widest text-[10px]">Owner (Dono)</th>
+                                <th class="pb-3 uppercase font-black tracking-widest text-[10px]">WP Integração</th>
                                 <th class="pb-3 uppercase font-black tracking-widest text-[10px]">Status Operacional</th>
                                 <th class="pb-3 uppercase font-black tracking-widest text-[10px]">Health (Trafego)</th>
                                 <th class="pb-3 uppercase font-black tracking-widest text-[10px] text-right">Ação Restritiva</th>
@@ -513,6 +514,13 @@ $suspicious = $pdo->query("
                             <tr class="border-b border-slate-800/30 hover:bg-slate-900/50">
                                 <td class="py-4 font-mono font-bold text-white"><i class="ph-bold ph-globe text-primary-400 mr-1"></i> <?= htmlspecialchars($dom['domain']) ?></td>
                                 <td class="py-4 text-slate-400"><?= htmlspecialchars($dom['dono_email']) ?></td>
+                                <td class="py-4">
+                                    <?php if(!empty($dom['wp_url'])): ?>
+                                        <a href="<?= htmlspecialchars($dom['wp_url']) ?>" target="_blank" class="text-blue-400 underline text-[10px] flex items-center gap-1"><i class="ph-bold ph-link"></i> WP Configurado</a>
+                                    <?php else: ?>
+                                        <span class="text-slate-600 text-[10px]">Nenhuma</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="py-4">
                                     <?php if($dom['is_active']): ?>
                                         <span class="bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider">Autorizado (200)</span>

@@ -27,14 +27,14 @@ try {
 
     <nav>
         <a href="?route=landing" class="logo" style="display: flex; align-items: center;">
-            <img src="public/img/logo.png" alt="Front18 Logo" style="height: 40px; object-fit: contain;">
+            <img src="public/img/logo.png" alt="Front18 Logo" style="height: 24px; object-fit: contain;">
         </a>
         <div class="nav-links">
             <a href="#sobre">Sobre</a>
             <a href="#demo">Demo</a>
             <a href="#planos">Planos</a>
             <a href="#faq">FAQ</a>
-            <a href="?route=login" class="btn btn-primary" style="padding: 0.5rem 1.5rem; font-size: 0.9rem;">Entrar</a>
+            <a href="?route=login" class="btn btn-primary" style="padding: 0.4rem 1.5rem 0.6rem; font-size: 0.9rem; line-height: 1;">Entrar</a>
         </div>
     </nav>
 
@@ -403,7 +403,9 @@ try {
 
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; padding-bottom: 4rem; border-bottom: 1px solid var(--border-color);">
                 <div>
-                    <a href="?route=landing" style="font-family: var(--font-display); font-size: 1.5rem; color:#fff; text-decoration:none; letter-spacing: 0.05em;">FRONT<span style="color:var(--accent-red);">18</span></a>
+                    <a href="?route=landing" style="display: inline-block; margin-bottom: 0.5rem;">
+                        <img src="public/img/logo.png" alt="Front18 Logo" style="height: 28px; object-fit: contain;">
+                    </a>
                     <p style="margin-top: 1rem; font-size: 0.9rem; line-height: 1.7; max-width: 280px;">
                         Infraestrutura B2B de Verificação de idade por biometria criptográfica na Edge. 
                     </p>

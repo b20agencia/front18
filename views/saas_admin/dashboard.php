@@ -163,11 +163,12 @@ $logs = $pdo->query("SELECT a.*, d.domain FROM access_logs a LEFT JOIN saas_orig
 $planos = $pdo->query("SELECT * FROM plans ORDER BY price ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Monitoramento Suspeito
-$suspicious = $pdo->query("
+$stmtSus = $pdo->query("
     SELECT s.*, o.domain FROM suspicious_activity s
     LEFT JOIN saas_origins o ON s.domain_id = o.id
     ORDER BY s.id DESC LIMIT 10
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$suspicious = $stmtSus ? $stmtSus->fetchAll(PDO::FETCH_ASSOC) : [];
 
 ?>
 <!DOCTYPE html>
@@ -397,7 +398,7 @@ $suspicious = $pdo->query("
                             <?php else: foreach($suspicious as $sus): ?>
                             <div class="bg-red-500/10 border-l-2 border-red-500 p-3 rounded">
                                 <p class="text-xs font-bold text-white">Domínio <?= htmlspecialchars($sus['domain'] ?? 'N/A') ?></p>
-                                <p class="text-[10px] text-red-400 mt-1">IP: <?= htmlspecialchars($sus['ip_masked']) ?> - Motivo: <?= htmlspecialchars($sus['reason']) ?></p>
+                                <p class="text-[10px] text-red-400 mt-1">IP: <?= htmlspecialchars($sus['ip_masked'] ?? $sus['ip_address'] ?? 'N/A') ?> - Motivo: <?= htmlspecialchars($sus['reason'] ?? 'Anomalia') ?></p>
                             </div>
                             <?php endforeach; endif; ?>
                             
@@ -594,9 +595,9 @@ $suspicious = $pdo->query("
                 <?php else: foreach($suspicious as $sus): ?>
                 <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between border-l-4 border-l-red-500 mb-3">
                     <div>
-                        <p class="text-xs font-mono text-slate-500 mb-1"><?= htmlspecialchars($sus['created_at']) ?> - IP <?= htmlspecialchars($sus['ip_masked']) ?></p>
+                        <p class="text-xs font-mono text-slate-500 mb-1"><?= htmlspecialchars($sus['created_at'] ?? date('Y-m-d H:i')) ?> - IP <?= htmlspecialchars($sus['ip_masked'] ?? $sus['ip_address'] ?? 'N/A') ?></p>
                         <h4 class="font-bold text-sm text-white">Domínio Alvo: <?= htmlspecialchars($sus['domain'] ?? 'N/A') ?></h4>
-                        <p class="text-xs text-slate-400 max-w-3xl mt-1">Rule Triggered: <?= htmlspecialchars($sus['reason']) ?></p>
+                        <p class="text-xs text-slate-400 max-w-3xl mt-1">Rule Triggered: <?= htmlspecialchars($sus['reason'] ?? 'Anomalia Identificada') ?></p>
                     </div>
                     <span class="bg-red-500/10 text-red-500 px-3 py-1 text-xs font-bold rounded cursor-not-allowed">Bloqueado L7</span>
                 </div>

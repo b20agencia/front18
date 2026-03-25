@@ -27,10 +27,11 @@ if (!$origin) {
 }
 
 // Filtro de Data
-$query = "SELECT * FROM access_logs WHERE client_id = ? "; // No Front18 nosso domain é amarrado via user_id -> client_id. Mas pera, temos vários domínios por user? 
-// Originalmente, o SessionManager.php salva siteOrigin!
-$query .= "AND siteOrigin = ? ";
-$params = [$userId, $origin['domain']];
+// Busca robusta com LIKE (Cobre variações nítidas como trailing slashes, www, e protocolos divergentes)
+$query = "SELECT * FROM access_logs WHERE client_id = ? "; 
+$query .= "AND siteOrigin LIKE ? ";
+$cleanDomain = str_replace(['http://', 'https://', 'www.'], '', trim($origin['domain'], '/'));
+$params = [$userId, '%' . $cleanDomain . '%'];
 
 if ($period !== 'all' && preg_match('/^\d{4}-\d{2}$/', $period)) {
     $query .= "AND DATE_FORMAT(created_at, '%Y-%m') = ? ";

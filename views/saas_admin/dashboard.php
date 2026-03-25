@@ -613,7 +613,7 @@ $suspicious = $pdo->query("
                         <div class="text-center mb-6 mt-2">
                             <h3 class="text-xl font-bold text-white mb-2" style="font-family: 'Space Grotesk', sans-serif;"><?= htmlspecialchars($plan['name']) ?></h3>
                             <div class="text-4xl font-black text-white" style="font-family: 'Space Grotesk', sans-serif;">
-                                R$ <?= number_format($plan['price'],0,',','.') ?><span class="text-lg text-slate-500 font-normal">/mês</span>
+                                R$ <?= number_format($plan['price'], 2, ',', '.') ?><span class="text-lg text-slate-500 font-normal">/mês</span>
                             </div>
                         </div>
                         

@@ -69,7 +69,7 @@ if ($origin) {
 // Resolve Identidade SaaS
 if ($originClean && $apiKey) {
     $stmt = $pdo->prepare("
-        SELECT o.id, o.user_id, o.is_active, o.protection_level, o.anti_scraping, o.seo_safe, o.deny_url, o.quota_exceeded_at, o.server_validation_active, o.age_estimation_active, o.display_mode,
+        SELECT o.id, o.domain, o.user_id, o.is_active, o.protection_level, o.anti_scraping, o.seo_safe, o.deny_url, o.quota_exceeded_at, o.server_validation_active, o.age_estimation_active, o.display_mode,
                o.terms_url, o.privacy_url, o.color_bg, o.color_text, o.color_primary, o.privacy_config, o.modal_config,
                p.max_requests_per_month, u.is_trial
         FROM saas_origins o 
@@ -82,7 +82,7 @@ if ($originClean && $apiKey) {
 } else {
     // S2S Fallback (Server-to-Server requests sem cabeçalho Origin ou via apiKey)
     $stmt = $pdo->prepare("
-        SELECT o.id, o.user_id, o.is_active, o.protection_level, o.anti_scraping, o.seo_safe, o.deny_url, o.quota_exceeded_at, o.server_validation_active, o.age_estimation_active, o.display_mode,
+        SELECT o.id, o.domain, o.user_id, o.is_active, o.protection_level, o.anti_scraping, o.seo_safe, o.deny_url, o.quota_exceeded_at, o.server_validation_active, o.age_estimation_active, o.display_mode,
                o.terms_url, o.privacy_url, o.color_bg, o.color_text, o.color_primary, o.privacy_config, o.modal_config,
                p.max_requests_per_month, u.is_trial
         FROM saas_origins o 

@@ -230,23 +230,34 @@ if ($action === 'config') {
 if ($action === 'verify') {
     $inputData = json_decode(file_get_contents('php://input'), true);
     
-    // Captura da Biometria Facial do SDK (LGPD-Compliant, apenas numérico)
+    // Captura da Biometria Facial e KYC CPF do SDK (LGPD-Compliant, apenas numérico e mascarado)
     $aiAge = null;
     $aiConfidence = null;
+    $cpfMask = null;
+    
+    if (!empty($inputData['cpf_mask'])) {
+        $cpfMask = strip_tags($inputData['cpf_mask']); // Ex: 123.***.***-45
+    }
     
     if (isset($inputData['ai_age']) && isset($inputData['ai_confidence'])) {
         $aiAge = (int)$inputData['ai_age'];
         $aiConfidence = (float)$inputData['ai_confidence'];
         
-        // Bloqueio Hardcoded caso a Rede Neural passe por baixo do limiar
+        // Bloqueio Hardcoded Primário: Ninguém passa com < 18 ou confiança irreal
         if ($aiConfidence < 80.0 || $aiAge < 18) {
             http_response_code(403);
-            die(json_encode(['success' => false, 'error' => 'Acesso Negado: A Validação Facial estimou idade inferior ao permitido.']));
+            die(json_encode(['success' => false, 'error' => 'Acesso Negado: A Validação Facial estimou idade inferior ao permitido/confiança baixa.']));
+        }
+        
+        // Regra B2B Irrevogável (God Mode): Se for < 21, WAF barra sem CPF Secundário
+        if ($aiAge < 21 && empty($cpfMask)) {
+            http_response_code(403);
+            die(json_encode(['success' => false, 'error' => 'Acesso Negado: Carga preditiva em Limiar Crítico (< 21 Anos). O Passaporte Biográfico (CPF Brasileiro) não foi despachado no payload.']));
         }
     }
 
     // Gravar a Prova Material Forense e habilitar a Sessão Jurídica (Backend Server State)
-    $sessaoBlockchain = (string) SessionManager::verifyUser($domainId, $aiAge, $aiConfidence);
+    $sessaoBlockchain = (string) SessionManager::verifyUser($domainId, $aiAge, $aiConfidence, $cpfMask);
 
     echo json_encode([
         'success' => true, 

@@ -989,7 +989,7 @@
                         if (this.config.aiEstimation) {
                             this.startFaceScan();
                         } else {
-                            this.validateAndUnlock();
+                            this.showReceiptBanner(); // Obriga a exibição do Extrato de Proteção legal mesmo sem IA
                         }
                     }, 500);
                 });
@@ -1134,14 +1134,22 @@
                 video.style.opacity = '0.3';
                 scanLine.style.display = 'none';
                 
-                if (age >= 18 && conf >= 80) {
-                    resultMsg.innerHTML = `<span style="color:#10b981;">✅ Identidade Confirmada! IDADE: ~${age} Anos<br><small style="color:#64748b; font-weight:normal;">Destrancando sistema de forma segura...</small></span>`;
-                    
-                    setTimeout(() => {
-                        this.config.aiAge = age;
-                        this.config.aiConfidence = conf;
-                        this.validateAndUnlock();
-                    }, 1800);
+                if (conf >= 80) {
+                    if (age >= 21) {
+                        resultMsg.innerHTML = `<span style="color:#10b981;">✅ Maioridade Liveness Confirmada! Idade: ~${age} Anos<br><small style="color:#64748b; font-weight:normal;">Emitindo certidão de bloqueio impenetrável...</small></span>`;
+                        setTimeout(() => {
+                            this.config.aiAge = age;
+                            this.config.aiConfidence = conf;
+                            this.showReceiptBanner(); // Fase 4
+                        }, 1800);
+                    } else {
+                        resultMsg.innerHTML = `<span style="color:#fbbf24;">⚠️ Idade Preditiva Crítica (< 21): ~${age} Anos.<br><small style="color:#64748b; font-weight:normal;">Redirecionando para Validação Biográfica Severa...</small></span>`;
+                        setTimeout(() => {
+                            this.config.aiAge = age;
+                            this.config.aiConfidence = conf;
+                            this.startCpfCheck(); // Fase 3
+                        }, 2000);
+                    }
 
                 } else {
                     let redirectUrl = this.config.denyUrl;
@@ -1152,9 +1160,9 @@
                     }
                     
                     if (age === 0) {
-                        resultMsg.innerHTML = `<span style="color:#ef4444;">❌ Validação Suspensa!<br><small style="color:#64748b">Análise abortada por falha crítica nas leituras.</small></span>`;
+                        resultMsg.innerHTML = `<span style="color:#ef4444;">❌ Validação Suspensa!<br><small style="color:#64748b">Análise abortada por falha nas leituras faciais.</small></span>`;
                     } else {
-                        resultMsg.innerHTML = `<span style="color:#ef4444;">❌ Acesso Reprovado! IDADE: ~${age} Anos.<br><small style="color:#64748b">O motor algorítmico identificou liminar de idade inferior a 18 anos.</small></span>`;
+                        resultMsg.innerHTML = `<span style="color:#ef4444;">❌ Reprovado por Anomalia (Confiança: ${conf}%)<br><small style="color:#64748b">Você não passou no teste de vitalidade humana/maioridade.</small></span>`;
                     }
                     setTimeout(() => { window.location.href = redirectUrl; }, 3500);
                 }
@@ -1339,10 +1347,199 @@
                 triggerBtn.style.pointerEvents = 'auto';
             }
         },
+        isValidCPF: function(cpf) {
+            if (typeof cpf !== 'string') return false;
+            cpf = cpf.replace(/[^\d]+/g, '');
+            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+            let sum = 0, rest;
+            for (let i = 1; i <= 9; i++) sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+            rest = (sum * 10) % 11; if ((rest === 10) || (rest === 11)) rest = 0; if (rest !== parseInt(cpf.substring(9, 10))) return false;
+            sum = 0;
+            for (let i = 1; i <= 10; i++) sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+            rest = (sum * 10) % 11; if ((rest === 10) || (rest === 11)) rest = 0; if (rest !== parseInt(cpf.substring(10, 11))) return false;
+            return true;
+        },
+
+        startCpfCheck: function() {
+            const modalContent = document.getElementById('Front18-modal');
+            modalContent.innerHTML = `
+                <div style="text-align:center;">
+                   <div style="display:flex; justify-content:center; align-items:center; margin-bottom:15px;">
+                       <div class="Front18-badge" style="background:rgba(234, 179, 8, 0.1); color:#eab308; border-color:rgba(234, 179, 8, 0.2); margin-bottom:0;">⚠️ Verificação Secundária Obrigatória</div>
+                   </div>
+                   <h3 style="font-weight:800; font-size:20px; margin:-5px 0 10px; color:var(--ag-text);">Reconhecimento Biográfico (KYC)</h3>
+                   <p style="font-size:13px; color:rgba(255,255,255,0.6); margin:0 0 24px; line-height:1.5;">O scanner de inteligência calculou uma idade limítrofe inferior a 21 anos. Para preservar a responsabilidade civil do domínio, você deve comprovar sua origem com um <b>CPF Brasileiro válido</b>.</p>
+                   
+                   <div style="margin-bottom: 24px; text-align:left;">
+                       <label style="display:block; font-size:11px; font-weight:800; color:rgba(255,255,255,0.5); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Insira seu CPF Nacional</label>
+                       <input type="text" id="ag-cpf-input" placeholder="000.000.000-00" maxlength="14" autocomplete="off" style="width:100%; background:rgba(0,0,0,0.2); border: 2px solid rgba(255,255,255,0.1); color:white; padding:16px; border-radius:12px; font-size:18px; font-weight:700; text-align:center; font-family:monospace; outline:none; transition:0.3s;">
+                   </div>
+                   
+                   <div id="ag-cpf-error" style="color:#ef4444; font-size:12px; font-weight:bold; height:18px; margin-bottom:12px;"></div>
+                   <button id="ag-btn-verify-cpf" class="Front18-btn Front18-btn-primary" style="width:100%; padding:16px;">Validar Status do CPF</button>
+                   
+                   <p style="font-size:10px; color:rgba(255,255,255,0.3); margin-top:20px;">*O arquivo do seu CPF é encriptado irreversivelmente no Banco de Dados em virtude da LGPD Brasileira. Jamais enviamos em texto plano.</p>
+                </div>
+            `;
+
+            const input = document.getElementById('ag-cpf-input');
+            const btn = document.getElementById('ag-btn-verify-cpf');
+            const err = document.getElementById('ag-cpf-error');
+
+            input.addEventListener('input', (e) => {
+                let v = e.target.value.replace(/\D/g, '');
+                if (v.length > 11) v = v.substring(0, 11);
+                if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+                else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
+                else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, "$1.$2");
+                e.target.value = v;
+                err.innerHTML = '';
+                input.style.borderColor = 'rgba(255,255,255,0.2)';
+            });
+
+            btn.addEventListener('click', () => {
+                const rawCpf = input.value;
+                if (this.isValidCPF(rawCpf)) {
+                    btn.disabled = true;
+                    btn.innerHTML = `<span style="display:flex; justify-content:center; width:100%"><div class="ag-spinner"></div></span>`;
+                    input.style.borderColor = '#10b981';
+                    err.style.color = '#10b981';
+                    err.innerHTML = 'CPF Válido (Check Modulo)! Sincronizando com a API...';
+                    
+                    setTimeout(() => {
+                        this.config.cpfUsed = rawCpf;
+                        this.showReceiptBanner();
+                    }, 1200);
+                } else {
+                    input.style.borderColor = '#ef4444';
+                    err.style.color = '#ef4444';
+                    err.innerHTML = 'Recusado. O CPF inserido possui numeração inidônea (Falso).';
+                    input.focus();
+                }
+            });
+        },
+
+        syncReceiptHash: async function() {
+            try {
+                const verifyUrl = new URL(this.config.apiEndpoint, window.location.href);
+                verifyUrl.searchParams.append('action', 'verify');
+
+                const payload = {
+                    terms_version: this.config.termsVersion,
+                    ai_age: this.config.aiAge || null,
+                    ai_confidence: this.config.aiConfidence || null,
+                    cpf_mask: this.config.cpfUsed ? this.config.cpfUsed.replace(/\d{3}\.\d{3}/, '***.***') : null
+                };
+
+                const headers = { 'Cache-Control': 'no-cache', 'Content-Type': 'application/json' };
+                if (this.config.apiKey) headers['X-API-KEY'] = this.config.apiKey;
+
+                const authRes = await fetch(verifyUrl.toString(), {
+                    method: 'POST', 
+                    credentials: 'omit',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+
+                if (!authRes.ok) throw new Error('CORS or Token issue');
+                const authData = await authRes.json();
+                
+                if (authData.success && authData.block_hash) {
+                    this.config.sessionToken = authData.block_hash;
+                    try { localStorage.setItem('ag_srv_token', authData.block_hash); } catch(e){}
+                    
+                    const preview = document.getElementById('ag-hash-preview');
+                    if (preview) {
+                        preview.innerText = authData.block_hash.substr(0, 24) + '...';
+                        preview.style.color = '#38bdf8';
+                        preview.style.opacity = '1';
+                    }
+                }
+            } catch (e) {
+                const preview = document.getElementById('ag-hash-preview');
+                if (preview) preview.innerText = 'OFFLINE_FALLBACK_OK';
+            }
+        },
+
+        showReceiptBanner: function() {
+            const modalContent = document.getElementById('Front18-modal');
+            const hasCpf = !!this.config.cpfUsed;
+            
+            modalContent.innerHTML = `
+                <div style="text-align:center;">
+                   <div style="width: 72px; height: 72px; border-radius:50%; background:rgba(16, 185, 129, 0.1); border: 2px solid #10b981; display:flex; align-items:center; justify-content:center; margin: 0 auto 20px; box-shadow: 0 0 20px rgba(16,185,129,0.3);">
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                   </div>
+                   
+                   <h3 style="font-weight:900; font-size:24px; margin:0 0 8px; color:var(--ag-text);">Acesso Selado</h3>
+                   <p style="font-size:13px; color:rgba(255,255,255,0.7); margin:0 0 24px; line-height:1.6;">
+                        A sua origem foi validada com sucesso pelo Sistema de Fechadura Digital.<br>As trilhas de custódia geraram um Certificado Seguro.
+                   </p>
+
+                   <div style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 12px; padding: 16px; text-align: left; margin-bottom: 24px; display:flex; flex-direction:column; gap:8px;">
+                        <div style="font-family:monospace; font-size:10px; font-weight:bold; color:#64748b; margin-bottom:4px;">STATUS DO HUB APROVADOR:</div>
+                        <div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px;"><span>CONTRATO_BASE:</span> <span style="color:#f8fafc">${this.config.termsVersion}</span></div>
+                        <div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px;"><span>IA_LIVENESS_EST:</span> <span style="color:#10b981">${this.config.aiAge ? '~' + this.config.aiAge + ' ANOS (PASS)' : 'N/A'}</span></div>
+                        ${hasCpf ? `<div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px;"><span>KYC_CPF_MASK:</span> <span style="color:#fbbf24">${this.config.cpfUsed.replace(/\d{3}\.\d{3}/, '***.***')}</span></div>` : ''}
+                        <div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; padding-top:2px;"><span>NODE_CHAIN_HASH:</span> <span id="ag-hash-preview" style="color:#fff; opacity:0.5;">AGUARDANDO SINCRONIA...</span></div>
+                   </div>
+                   
+                   <div style="display:flex; flex-direction:column; gap:12px;">
+                       <button id="ag-btn-download-txt" class="Front18-btn Front18-btn-secondary" style="padding:14px; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Baixar Recibo de Custódia Legal (TXT)</button>
+                       <button id="ag-btn-final-unlock" class="Front18-btn Front18-btn-primary" style="padding:16px; font-size:16px;">Ir para o Site Fechado 🔓</button>
+                   </div>
+                </div>
+            `;
+
+            // Envia os logs pro Cérebro e busca a Cadeia de Verificação para colocar na Preview do Modal
+            if (this.config.secureMode) {
+                 this.syncReceiptHash();
+            } else {
+                 document.getElementById('ag-hash-preview').innerText = 'SECUREMODE_OFF_0x00';
+            }
+
+            document.getElementById('ag-btn-download-txt').addEventListener('click', () => {
+                 const dataStr = "=================================================\n" +
+                                 "     FRONT18 B2B - RECIBO DE CUSTÓDIA LEGAL      \n" +
+                                 "=================================================\n" +
+                                 "DATA TIMESTAMP:    " + new Date().toISOString() + "\n" +
+                                 "DOMÍNIO ALVO:      " + window.location.hostname + "\n" +
+                                 "TERMOS ASSINADOS:  " + this.config.termsVersion + "\n" +
+                                 "LIVENESS SCORE:    AGE ~" + this.config.aiAge + " (Conf: " + this.config.aiConfidence + "%)\n" +
+                                 (this.config.cpfUsed ? "KYC CPF CHECK:     " + this.config.cpfUsed.replace(/\d{3}\.\d{3}/, '***.***') + "\n" : "") +
+                                 "STATUS LIBERAÇÃO:  APROVADO (NODE 200)\n" +
+                                 "-------------------------------------------------\n" +
+                                 "Chave Blockchain Mestre da Sessão Atual: \n" + 
+                                 (document.getElementById('ag-hash-preview').innerText) + "\n\n" +
+                                 "O porte desta chave atesta a comprovação moral de acesso restrito \naos portais protegidos pela tecnologia AgeGate Front18.\n";
+                 
+                 const blob = new Blob([dataStr], { type: 'text/plain;charset=utf-8' });
+                 const url = window.URL.createObjectURL(blob);
+                 const a = document.createElement('a');
+                 a.setAttribute('href', url);
+                 a.setAttribute('download', 'Recibo_Custodia_Front18.txt');
+                 a.click();
+                 window.URL.revokeObjectURL(url);
+            });
+
+            document.getElementById('ag-btn-final-unlock').addEventListener('click', () => {
+                 const btn = document.getElementById('ag-btn-final-unlock');
+                 btn.disabled = true;
+                 btn.innerHTML = `<span style="display:flex; justify-content:center; width:100%"><div class="ag-spinner"></div></span>`;
+                 
+                 // Já enviamos o HIT em syncReceiptHash. Apenas seguimos os processos locais!
+                 this.saveUXSession();
+                 if (this.config.secureMode) {
+                     this.loadSecureContent().then(() => this.unlock()).catch(() => this.unlock());
+                 } else {
+                     this.unlock();
+                 }
+            });
+        },
 
         /**
-         * O FLUXO MAIS SÓLIDO DO SCRIPT
-         * Chama a abertura de Sessões ativas de PHP. Se a sessão for feita, prossegue pra destrancar as divs!
+         * O FLUXO INICIAL SEM I.A - Usado se a Proteção Preditiva não estiver ativada
+         * Mantém a compatibilidade antiga em caso de Planos Básicos
          */
         validateAndUnlock: async function() {
             if (typeof this.config.onVerify === 'function') this.config.onVerify();

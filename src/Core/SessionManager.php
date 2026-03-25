@@ -113,7 +113,7 @@ class SessionManager {
         return $currentHash;
     }
 
-    public static function verifyUser($clientId = 0, $aiAge = null, $aiConfidence = null) {
+    public static function verifyUser($clientId = 0, $aiAge = null, $aiConfidence = null, $cpfMask = null) {
         self::start();
         $_SESSION['client_id'] = $clientId;
         $_SESSION['agegate_authorized'] = true;
@@ -159,7 +159,11 @@ class SessionManager {
         }
 
         // Fase 1 e 2: Gravar Registro à Prova de Adulteração (Sucesso)
-        return self::logAudit('VERIFY_OPT_IN', null, $clientId, $aiAge, $aiConfidence);
+        $actionStr = 'VERIFY_OPT_IN';
+        if ($cpfMask) {
+            $actionStr .= " (KYC_CPF: {$cpfMask})";
+        }
+        return self::logAudit($actionStr, null, $clientId, $aiAge, $aiConfidence);
     }
 
     public static function hasAccess() {

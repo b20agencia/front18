@@ -1436,8 +1436,45 @@ $myOrigins = $myOrigins ?? [];
                     </div>
                     
                     <div class="flex gap-4">
-                        <button onclick="alert('Funcionalidade Gateway de Pagamento pendente de integração Pagar.me/Stripe')" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-6 py-3 rounded-xl border border-white/5 transition-colors text-sm">Atualizar Cartão / Upgrade</button>
-                        <button onclick="alert('Nenhuma fatura anterior localizada.')" class="bg-transparent hover:bg-white/5 text-slate-400 font-bold px-6 py-3 rounded-xl transition-colors text-sm">Faturas Anteriores</button>
+                        <button onclick="alert('Nenhuma fatura anterior localizada.')" class="bg-transparent hover:bg-white/5 text-slate-400 font-bold px-6 py-3 rounded-xl transition-colors text-sm border border-slate-800">Ver Faturas Anteriores</button>
+                    </div>
+
+                    <?php
+                    $stmtFetchPlans = $pdo->query("SELECT * FROM plans ORDER BY price ASC");
+                    $allAssinaturas = $stmtFetchPlans->fetchAll(PDO::FETCH_ASSOC);
+                    ?>
+                    <div class="mt-12 pt-10 border-t border-slate-800">
+                        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2"><i class="ph-fill ph-rocket-launch text-primary-500"></i> Opções de Assinatura (Upgrade/Downgrade)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <?php foreach($allAssinaturas as $ass): 
+                                $isActivePlan = ($planDetails['id'] == $ass['id']);
+                                $assPrice = number_format($ass['price'], 2, ',', '.');
+                            ?>
+                            <div class="bg-slate-950 border <?= $isActivePlan ? 'border-primary-500 shadow-[0_0_30px_rgba(99,102,241,0.15)] bg-slate-900/50' : 'border-slate-800 hover:border-slate-700' ?> rounded-2xl p-8 relative flex flex-col transition-all">
+                                <?php if($isActivePlan): ?>
+                                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-[10px] font-bold px-4 py-1.5 uppercase tracking-widest rounded-full border border-primary-400 shadow-lg glow-effect whitespace-nowrap">Seu Plano Atual</div>
+                                <?php endif; ?>
+                                <h4 class="text-white font-bold text-xl mb-1"><?= htmlspecialchars($ass['name']) ?></h4>
+                                <p class="text-primary-400 font-black text-3xl mb-6">R$ <?= $assPrice ?> <span class="text-xs text-slate-500 font-normal">/ mês</span></p>
+                                <ul class="text-sm text-slate-400 space-y-3 mb-8 flex-1">
+                                    <li class="flex items-center gap-3"><i class="ph-bold ph-check text-emerald-500"></i> <strong class="text-white"><?= number_format($ass['max_requests_per_month'], 0, ',', '.') ?></strong> Processamentos B2B</li>
+                                    <li class="flex items-center gap-3"><i class="ph-bold ph-check text-emerald-500"></i> <strong class="text-white"><?= $ass['max_domains'] ?></strong> Site(s) Blindado(s)</li>
+                                    <li class="flex items-center gap-3"><i class="<?= $ass['has_seo_safe'] ? 'ph-bold ph-check text-emerald-500' : 'ph-bold ph-x text-red-500' ?>"></i> Acesso Bot de Buscadores (Google)</li>
+                                    <li class="flex items-center gap-3"><i class="<?= $ass['has_anti_scraping'] ? 'ph-bold ph-check text-emerald-500' : 'ph-bold ph-x text-red-500' ?>"></i> WAF Anti-Scraping Blindado</li>
+                                    <li class="flex items-center gap-3"><i class="ph-bold ph-check text-emerald-500"></i> Dossiê LGPD / Blockchain Level <?= $ass['allowed_level'] ?></li>
+                                </ul>
+                                <button onclick="alert('Integração de Webhook Financeiro pendente. Chame o suporte técnico (B20) para emissão do contrato PIX/Cartão.')" class="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all <?= $isActivePlan ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' : 'bg-primary-600 hover:bg-primary-500 text-white shadow-[0_4px_15px_rgba(99,102,241,0.25)] hover:shadow-[0_4px_25px_rgba(99,102,241,0.4)]' ?>" <?= $isActivePlan ? 'disabled' : '' ?>>
+                                    <?php 
+                                        if ($isActivePlan) {
+                                            echo 'Assinatura Ativa';
+                                        } else {
+                                            echo ($ass['price'] > $planDetails['price']) ? 'Fazer Upgrade de Conta' : 'Fazer Downgrade';
+                                        }
+                                    ?>
+                                </button>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 </div>
             </div>

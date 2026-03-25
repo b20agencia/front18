@@ -21,18 +21,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= $basePath ?>css/front18.css">
+    <link rel="stylesheet" href="<?= $basePath ?>css/front18.css?v=<?= time() ?>">
     <style>
         body {
             background-color: #080808; /* fundo sólido — sem transparência no iframe */
             display: flex; justify-content: center; align-items: center; min-height: 100vh;
             margin: 0; padding: 0;
+            overflow: hidden;
         }
 
         .catraca-container {
             width: 100%;
             max-width: 480px;
-            padding: 40px;
+            padding: 24px 32px;
             background-color: var(--bg-surface);
             border: 1px solid var(--border-color);
             border-top: 4px solid var(--accent-red);
@@ -66,14 +67,14 @@
         }
 
         p.description {
-            font-size: 14px; color: var(--text-secondary); margin-bottom: 30px; line-height: 1.5;
+            font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4;
         }
 
         .video-wrapper {
-            width: 100%; height: 320px; background-color: #000;
+            width: 100%; height: 240px; background-color: #000;
             border: 1px solid var(--border-color);
-            position: relative; margin-bottom: 24px;
-            overflow: hidden;
+            position: relative; margin-bottom: 16px;
+            overflow: hidden; border-radius: 8px;
         }
 
         #camera {
@@ -92,9 +93,30 @@
             opacity: 0.5; cursor: not-allowed;
             pointer-events: none;
         }
+        
+        button.analyzing {
+            opacity: 1 !important; 
+            background-color: transparent;
+            border: 2px solid var(--accent-red);
+            color: #fff;
+            animation: pulse-border 1.5s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(230, 0, 0, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(230, 0, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(230, 0, 0, 0); }
+        }
+
+        .btn-spinner {
+            display: inline-block;
+            width: 14px; height: 14px; margin-right: 8px; vertical-align: middle;
+            border: 2px solid rgba(255, 255, 255, 0.3); border-top-color: #fff;
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
 
         /* Status Messages */
-        .status { font-size: 14px; font-weight: 600; margin-top: 20px; min-height: 20px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; }
+        .status { font-size: 13px; font-weight: 600; margin-top: 15px; min-height: 20px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; }
         .status.success { color: #00FF80; }
         .status.error { color: var(--accent-red); }
         .status.info { color: var(--text-secondary); }

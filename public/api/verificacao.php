@@ -147,6 +147,9 @@
 
     <!-- Scripts da IA -->
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script>
+        window.__F18_HOST_SITE = <?= json_encode($_GET['host'] ?? 'Acesso Direto') ?>;
+    </script>
     <!-- App Js com as Regras de Negócio e o PostMessage pro Pai -->
     <script src="<?= $basePath ?>js/app.js"></script>
 </body>

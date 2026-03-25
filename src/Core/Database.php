@@ -205,7 +205,7 @@ class Database {
             "protection_level INT DEFAULT 1", "anti_scraping TINYINT(1) DEFAULT 0", "seo_safe TINYINT(1) DEFAULT 0", "is_active TINYINT(1) DEFAULT 1",
             "quota_exceeded_at DATETIME NULL", "server_validation_active TINYINT(1) DEFAULT 1", "age_estimation_active TINYINT(1) DEFAULT 0",
             "display_mode VARCHAR(20) DEFAULT 'global_lock'", "color_primary VARCHAR(20) DEFAULT '#6366f1'", "color_bg VARCHAR(20) DEFAULT '#0f172a'",
-            "color_text VARCHAR(20) DEFAULT '#f8fafc'"
+            "color_text VARCHAR(20) DEFAULT '#f8fafc'", "wp_url VARCHAR(255) NULL", "wp_rules JSON NULL"
         ];
         foreach ($columnsOrigins as $col) {
             $colName = explode(" ", $col)[0];

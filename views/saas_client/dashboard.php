@@ -156,6 +156,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     die(json_encode(['success' => true]));
 }
 
+// Salvar Configurações do SDK WordPress e Sincronizar via Webhook (API)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_wp') {
+    $wp_url = filter_var($_POST['wp_url'] ?? '', FILTER_SANITIZE_URL);
+    if ($wp_url) { $wp_url = rtrim($wp_url, '/'); }
+    
+    $wp_rules = [
+        'global' => isset($_POST['wp_global']) ? true : false,
+        'home'   => isset($_POST['wp_home']) ? true : false,
+        'cpts'   => isset($_POST['wp_cpts']) && is_array($_POST['wp_cpts']) ? array_map('htmlspecialchars', $_POST['wp_cpts']) : []
+    ];
+    
+    $jsonRules = json_encode($wp_rules);
+    
+    // Salva na Base
+    $stmtUpd = $pdo->prepare("UPDATE saas_origins SET wp_url = ?, wp_rules = ? WHERE user_id = ?");
+    $stmtUpd->execute([$wp_url, $jsonRules, $userId]);
+    
+    // Executa o Push Imediatamente
+    $pushStatus = false;
+    $pushMsg = "URL não definida.";
+    if (!empty($wp_url)) {
+        $stmtOrigin = $pdo->prepare("SELECT api_key FROM saas_origins WHERE user_id = ? LIMIT 1");
+        $stmtOrigin->execute([$userId]);
+        $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
+        
+        if ($origin && $origin['api_key']) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $wp_url . '/wp-json/front18/v1/sync');
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['rules' => $wp_rules]));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $origin['api_key']
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 8); // timeout de 8s para o admin da outra ponta salvar os options
+            
+            $response = curl_exec($ch);
+            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpcode >= 200 && $httpcode < 300) {
+                $pushStatus = true;
+                $pushMsg = "Push Webhook sincronizado com sucesso no WordPress remoto.";
+            } else {
+                $pushStatus = false;
+                $pushMsg = "Servidor remoto WordPress negou a conexão (Erro $httpcode). Verifique a URL e a API Key no seu painel. Resposta: $response";
+            }
+        }
+    }
+    
+    die(json_encode(['success' => true, 'push_status' => $pushStatus, 'push_msg' => $pushMsg]));
+}
+
 if (!$config) {
     $apiKey = "API_Ainda_Nao_Configurada";
     $myLogs = 0;
@@ -288,6 +342,9 @@ $myOrigins = $myOrigins ?? [];
             </button>
             <button onclick="switchTab('api')" id="tab-btn-api" class="sidebar-link w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-300 font-medium text-left">
                 <i class="ph-bold ph-code text-lg text-indigo-400"></i> API e Integração
+            </button>
+            <button onclick="switchTab('wp')" id="tab-btn-wp" class="sidebar-link w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-300 font-medium text-left">
+                <i class="ph-bold ph-plugs-connected text-lg text-blue-400"></i> Integração WordPress
             </button>
         </nav>
         
@@ -1533,6 +1590,149 @@ $myOrigins = $myOrigins ?? [];
                 </div>
                 </div>
             </div>
+
+            <!-- ====== TAB WP: GERENCIAMENTO REMOTO WORDPRESS ====== -->
+            <div id="tab-wp" class="tab-content max-w-4xl mx-auto">
+                <div class="glass-panel p-8 rounded-2xl relative overflow-hidden mb-8 border border-blue-500/20">
+                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 pointer-events-none"></div>
+                    <div class="flex items-start gap-6 relative">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
+                            <i class="ph-bold ph-plugs-connected text-3xl text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-white mb-2 tracking-tight">Sincronização Remota: WordPress</h3>
+                            <p class="text-sm text-slate-400 max-w-2xl leading-relaxed">Você está usando o nosso Plugin WordPress no seu site? Configure aqui quais páginas do seu WP serão protegidas e nós enviaremos o comando para o seu site via Webhook invisível no modo "Thin Client". O seu plugin WP atuará apenas como um receptor burro obedecendo nossa inteligência de ponta.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <?php
+                $wpConf = !empty($config['wp_rules']) ? json_decode($config['wp_rules'], true) : [];
+                $wpUrl = $config['wp_url'] ?? '';
+                $wpGlobal = isset($wpConf['global']) ? $wpConf['global'] : false;
+                $wpHome = isset($wpConf['home']) ? $wpConf['home'] : false;
+                $wpCpts = isset($wpConf['cpts']) ? $wpConf['cpts'] : [];
+                ?>
+                <form id="frmWpSync" class="space-y-6" onsubmit="event.preventDefault(); syncWpConfig(this);">
+                    <!-- Detalhes do Endpoint -->
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                        <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-globe text-blue-400"></i> Endpoint do seu Site</h4>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">URL Completa da Instalação do WordPress</label>
+                            <input type="url" name="wp_url" placeholder="https://seudominio.com.br" value="<?= htmlspecialchars($wpUrl) ?>" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono">
+                            <p class="text-[10px] text-slate-500 mt-2">Dica: Se o seu WordPress foi instalado em uma subpasta (ex: /blog), coloque a URL exata da subpasta. Usaremos isso para localizar a Rest API.</p>
+                        </div>
+                    </div>
+
+                    <!-- Controle de Escopo -->
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                        <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-crosshair text-indigo-400"></i> Controle de Escopo Protegido</h4>
+                        
+                        <div class="space-y-4">
+                            <!-- Global -->
+                            <div class="flex items-center justify-between p-4 bg-slate-950 rounded-xl border <?= $wpGlobal ? 'border-blue-500/50 bg-blue-900/10' : 'border-slate-800' ?> transition hover:border-slate-700">
+                                <div>
+                                    <h5 class="font-bold text-sm text-slate-200">Requerer Proteção no Site Inteiro</h5>
+                                    <p class="text-[10px] text-slate-500 mt-1">Se ativo, qualquer rota ou query de post passará pelo WAF de idade do Front18. Ideal se 100% de seu conteúdo é adulto.</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                  <input type="checkbox" name="wp_global" value="1" <?= $wpGlobal ? 'checked' : '' ?> onchange="this.closest('div.border').classList.toggle('border-blue-500/50'); this.closest('div.border').classList.toggle('bg-blue-900/10'); document.getElementById('granular_scope').classList.toggle('opacity-50'); document.getElementById('granular_scope').classList.toggle('pointer-events-none');" class="sr-only peer">
+                                  <div class="w-11 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 peer-checked:bg-blue-500 transition-colors"></div>
+                                </label>
+                            </div>
+
+                            <div id="granular_scope" class="space-y-4 <?= $wpGlobal ? 'opacity-50 pointer-events-none' : '' ?> transition-opacity">
+                                <!-- Home -->
+                                <div class="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800 transition hover:border-slate-700">
+                                    <div>
+                                        <h5 class="font-bold text-sm text-slate-200">Proteger Apenas a Página Inicial (Root)</h5>
+                                        <p class="text-[10px] text-slate-500 mt-1">Se desejar restringir apenas o portal de entrada, os links diretos para posts passarão livre.</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                      <input type="checkbox" name="wp_home" value="1" <?= $wpHome ? 'checked' : '' ?> class="sr-only peer">
+                                      <div class="w-11 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 peer-checked:bg-indigo-500 transition-colors"></div>
+                                    </label>
+                                </div>
+
+                                <!-- CPTs -->
+                                <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 transition hover:border-slate-700">
+                                    <h5 class="font-bold text-sm text-slate-200 mb-3">Ativar Proteção Inteligente em Tipos de Postagens (CPTs)</h5>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                                            <input type="checkbox" name="wp_cpts[]" value="post" <?= in_array('post', $wpCpts) ? 'checked' : '' ?> class="rounded bg-slate-900 border-slate-700 text-blue-500">
+                                            Posts (Artigos)
+                                        </label>
+                                        <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                                            <input type="checkbox" name="wp_cpts[]" value="page" <?= in_array('page', $wpCpts) ? 'checked' : '' ?> class="rounded bg-slate-900 border-slate-700 text-blue-500">
+                                            Páginas
+                                        </label>
+                                        <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                                            <input type="checkbox" name="wp_cpts[]" value="product" <?= in_array('product', $wpCpts) ? 'checked' : '' ?> class="rounded bg-slate-900 border-slate-700 text-blue-500">
+                                            Produtos (WooCommerce)
+                                        </label>
+                                        <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                                            <input type="checkbox" name="wp_cpts[]" value="portfolio" <?= in_array('portfolio', $wpCpts) ? 'checked' : '' ?> class="rounded bg-slate-900 border-slate-700 text-blue-500">
+                                            Portfolio
+                                        </label>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 mt-3 border-t border-slate-800/50 pt-2">Marcando, todos os arquivos dessas categorias ganharão a barreira Front18 de forma assíncrona (injetando CSS Anti-Flickering).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-800 mt-6 flex justify-end">
+                        <button type="submit" id="btnSaveWp" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(59,130,246,0.2)] hover:shadow-[0_4px_20px_rgba(59,130,246,0.4)] transition-all flex items-center justify-center gap-2 uppercase tracking-wide">
+                            <i class="ph-bold ph-paper-plane-right text-lg"></i> <span>Salvar & Fazer Push no WP Plugin</span>
+                        </button>
+                    </div>
+
+                    <!-- Mensagem de Resposta -->
+                    <div id="wp_sync_response" class="hidden rounded-xl p-4 mt-4 font-mono text-xs flex items-center justify-between"></div>
+
+                    <script>
+                    function syncWpConfig(form) {
+                        const btn = document.getElementById('btnSaveWp');
+                        const responseBox = document.getElementById('wp_sync_response');
+                        
+                        const originalHTML = btn.innerHTML;
+                        btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i> <span>Comunicando com seu Servidor...</span>';
+                        btn.classList.add('opacity-80', 'cursor-not-allowed');
+                        btn.disabled = true;
+                        responseBox.classList.add('hidden');
+                        
+                        const formData = new FormData(form);
+                        formData.append('action', 'save_wp');
+                        
+                        fetch('?route=dashboard', { method: 'POST', body: formData })
+                        .then(res => res.json())
+                        .then(data => {
+                            btn.classList.remove('bg-blue-600', 'hover:bg-blue-500', 'opacity-80', 'cursor-not-allowed');
+                            btn.disabled = false;
+                            
+                            responseBox.classList.remove('hidden', 'bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/20', 'bg-red-500/10', 'text-red-400', 'border-red-500/20', 'border');
+                            
+                            if(data.push_status) {
+                                btn.innerHTML = '<i class="ph-bold ph-check text-lg"></i> <span>Sincronizado!</span>';
+                                btn.classList.add('bg-emerald-600', 'shadow-emerald-500/20');
+                                responseBox.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/20');
+                                responseBox.innerHTML = '<span><i class="ph-fill ph-check-circle"></i> ' + data.push_msg + '</span>';
+                            } else {
+                                btn.innerHTML = '<i class="ph-bold ph-warning text-lg"></i> <span>Atenção na Redireção</span>';
+                                btn.classList.add('bg-amber-600', 'shadow-amber-500/20');
+                                responseBox.classList.add('bg-red-500/10', 'text-red-400', 'border', 'border-red-500/20');
+                                responseBox.innerHTML = '<span><i class="ph-fill ph-x-circle"></i> ' + data.push_msg + '</span>';
+                            }
+                            
+                            setTimeout(() => {
+                                btn.innerHTML = originalHTML;
+                                btn.className = "w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(59,130,246,0.2)] hover:shadow-[0_4px_20px_rgba(59,130,246,0.4)] transition-all flex items-center justify-center gap-2 uppercase tracking-wide";
+                            }, 5000);
+                        });
+                    }
+                    </script>
+                </form>
+            </div>
             
             <!-- ====== FOOTER ====== -->
             <div class="mt-16 text-center text-[10px] font-mono text-slate-500 uppercase tracking-widest pb-4">
@@ -1545,7 +1745,7 @@ $myOrigins = $myOrigins ?? [];
         const titles = {
             'home': 'Visão Geral', 'logs': 'Cadeia de Custódia Auditável', 'reports': 'Dossiê Jurídico (PDF)', 
             'domains': 'Gestão de Domínios', 'settings': 'Configurações de Blindagem', 'appearance': 'Personalização de Marca e UI', 'privacy': 'Portal LGPD e Cookies', 'suspicious': 'Atividade Suspeita / Abuso', 
-            'billing': 'Plano B2B e Assinatura', 'api': 'Integração Edge API'
+            'billing': 'Plano B2B e Assinatura', 'api': 'Integração Edge API', 'wp': 'Sincronização WordPress'
         };
         
         function switchTab(tabId) {

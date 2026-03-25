@@ -46,10 +46,20 @@ $domainId = 0;
 
 if (!$apiKey) {
     // Bloqueio WAF: Scraper ou Integração malfeita
-    $ip = $_SERVER['REMOTE_ADDR'];
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $ipMasked = $ip;
+    if (strpos($ip, ':') !== false) {
+        $ipParts = explode(':', $ip);
+        if (count($ipParts) >= 3) { $ipParts[count($ipParts)-1] = '****'; $ipParts[count($ipParts)-2] = '****'; }
+        $ipMasked = implode(':', $ipParts);
+    } else {
+        $ipParts = explode('.', $ip); 
+        if(count($ipParts) == 4) { $ipParts[3] = '***'; }
+        $ipMasked = implode('.', $ipParts);
+    }
+
     $stmt = $pdo->prepare("INSERT INTO suspicious_activity (domain_id, ip_masked, reason) VALUES (0, ?, 'Bloqueio WAF L7: Missing X-API-KEY Header')");
-    $ipParts = explode('.', $ip); if(count($ipParts) == 4) { $ipParts[3] = '***'; }
-    $stmt->execute([implode('.', $ipParts)]);
+    $stmt->execute([$ipMasked]);
     
     if ($origin) { header("Access-Control-Allow-Origin: $origin"); }
     http_response_code(401);

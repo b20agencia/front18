@@ -87,7 +87,7 @@ class SessionManager {
         $termsVersion = defined('FRONT18_TERMS_VERSION') ? FRONT18_TERMS_VERSION : 'v0.0';
         $termsHash = 'not_found';
         if (defined('FRONT18_TERMS_FILE') && file_exists(FRONT18_TERMS_FILE)) {
-             $termsHash = hash('sha256', file_get_contents(FRONT18_TERMS_FILE));
+             $termsHash = hash('sha256', file_get_contents(FRONT18_TERMS_FILE) ?: 'MISSING_FILE');
         }
 
         // Key Versioning para Auditoria

@@ -298,6 +298,14 @@ $myOrigins = $myOrigins ?? [];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Cliente | Front18 Pro</title>
+    <!-- Mute Tailwind CDN Warning -->
+    <script>
+        const _ow = console.warn;
+        console.warn = function(...args) {
+            if (typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+            _ow.apply(console, args);
+        };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {

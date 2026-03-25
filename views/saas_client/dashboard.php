@@ -177,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $pushStatus = false;
     $pushMsg = "URL não definida.";
     if (!empty($wp_url)) {
-        $stmtOrigin = $pdo->prepare("SELECT api_key FROM saas_origins WHERE user_id = ? LIMIT 1");
+        $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg FROM saas_origins WHERE user_id = ? LIMIT 1");
         $stmtOrigin->execute([$userId]);
         $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
         
@@ -185,7 +185,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $wp_url . '/wp-json/front18/v1/sync');
             curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['rules' => $wp_rules]));
+            
+            $pushData = [
+                'rules'  => $wp_rules,
+                'config' => [
+                    'display_mode' => !empty($origin['display_mode']) ? $origin['display_mode'] : 'global_lock',
+                    'color_bg'     => !empty($origin['color_bg']) ? $origin['color_bg'] : '#0f172a'
+                ]
+            ];
+            
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($pushData));
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
                 'Authorization: Bearer ' . $origin['api_key']
@@ -1588,7 +1597,6 @@ $myOrigins = $myOrigins ?? [];
                         <i class="ph-bold ph-book-open"></i> Acessar Portal de Ajuda Completo
                     </a>
                 </div>
-                </div>
             </div>
 
             <!-- ====== TAB WP: GERENCIAMENTO REMOTO WORDPRESS ====== -->
@@ -1733,8 +1741,9 @@ $myOrigins = $myOrigins ?? [];
                     </script>
                 </form>
             </div>
+        </div> <!-- Fecha flex-1 overflow-y-auto -->
             
-            <!-- ====== FOOTER ====== -->
+        <!-- ====== FOOTER ====== -->
             <div class="mt-16 text-center text-[10px] font-mono text-slate-500 uppercase tracking-widest pb-4">
                 Front18 Pro SaaS - Camada de Defesa Operacional
             </div>

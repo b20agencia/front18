@@ -90,6 +90,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <style>body { font-family: 'Inter', sans-serif; background: #020617; color: #f8fafc; }</style>
 </head>
 <body class="flex items-center justify-center min-h-screen relative overflow-hidden">
+    <!-- Botão de Voltar -->
+    <a href="?route=landing" class="absolute top-6 left-6 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-50 px-4 py-2 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10" style="text-decoration: none;">
+        <i class="ph ph-arrow-left tracking-wide text-lg"></i>
+        <span class="font-medium text-sm">Voltar ao Início</span>
+    </a>
+
     <!-- Efeitos de Fundo (Glowing / Premium) -->
     <div class="absolute inset-0 z-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0wIDEwaDQwdjFINHoiIGZpbGw9IiNmZmYiLz48L3N2Zz4=')] mix-blend-overlay"></div>
     <div class="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-primary-600/20 rounded-full blur-[100px] z-0 pointer-events-none"></div>

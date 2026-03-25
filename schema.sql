@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS `saas_users` (
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Insere o SuperAdmin Padrão (Email: admin@agegate.com / Senha: tads20122)
+-- Insere o SuperAdmin Padrão (Email: admin@front18.com / Senha: tads20122)
 INSERT INTO `saas_users` (`id`, `role`, `plan_id`, `email`, `password_hash`, `is_trial`) VALUES
-(1, 'superadmin', NULL, 'admin@agegate.com', '$2y$10$wTf2E7XhE69U9qX.Y7G.0uwzOExXmUHT.n20P75YEqA82Q9B70CgG', 1);
+(1, 'superadmin', NULL, 'admin@front18.com', '$2y$10$f.t6RqNiT.D2kDRB2xf.lOemx1lGsebpXjiBXxps2s97Qch.y6ctC', 1);
 
 
 -- --------------------------------------------------------

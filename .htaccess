@@ -1,6 +1,22 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # ==========================================
+    # Correção para Servidores cPanel / FastCGI
+    # ==========================================
+    CGIPassAuth On
+    
+    <IfModule mod_setenvif.c>
+        SetEnvIf X-API-KEY "^(.*)$" HTTP_X_API_KEY=$1
+        SetEnvIf X-Front18-TOKEN "^(.*)$" HTTP_X_FRONT18_TOKEN=$1
+        SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+    </IfModule>
+
+    # Permitir requisições OPTIONS passarem sem bloqueio do ModSecurity
+    <Limit GET POST OPTIONS PROPFIND>
+        Require all granted
+    </Limit>
+
     # Bloquear Lixeira/Listagens
     Options -Indexes
 

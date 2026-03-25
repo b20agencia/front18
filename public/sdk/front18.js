@@ -528,6 +528,9 @@
         },
 
         releaseWPShield: function() {
+            if (this._shieldReleased) return;
+            this._shieldReleased = true;
+            
             if (typeof window.Front18Release === 'function') {
                 window.Front18Release();
             }
@@ -758,46 +761,47 @@
                 rawMedias.forEach(media => {
                     // Ignora se estiver no modal de dpo/padrao, e ignora top-level site headers/footers
                     if(!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner') && !media.closest(exclusions)) {
-                        
-                        // Envelopamento CSS Grid apenas em tags restritas que não suportam pseudo-elementos
-                        if (media.tagName.match(/^(IMG|VIDEO|IFRAME|PICTURE)$/i)) {
-                            // Ignora micro imagems/icones
-                            if (media.clientWidth > 0 && media.clientWidth < 80) return;
-                            
-                            if (!media.parentElement.classList.contains('Front18-media-wrapper-premium')) {
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'Front18-media-wrapper-premium';
-                                media.parentNode.insertBefore(wrapper, media);
-                                wrapper.appendChild(media);
-                            }
-                        }
-                        
-                        media.classList.add('Front18-media-blurred');
-                        
-                        if (media.tagName === 'VIDEO') {
-                            // Trava rígida contra AutoPlay e Controls nativos
-                            media.pause();
-                            media.dataset.agControls = media.hasAttribute('controls') ? 'true' : 'false';
-                            media.removeAttribute('controls');
-                            media.addEventListener('play', (e) => {
-                                if (document.documentElement.classList.contains('Front18-blur-active')) {
-                                    e.preventDefault(); media.pause(); openModal(e);
+                        if (!media.classList.contains('Front18-media-blurred')) {
+                            // Envelopamento CSS Grid apenas em tags restritas que não suportam pseudo-elementos
+                            if (media.tagName.match(/^(IMG|VIDEO|IFRAME|PICTURE)$/i)) {
+                                // Ignora micro imagems/icones
+                                if (media.clientWidth > 0 && media.clientWidth < 80) return;
+                                
+                                if (!media.parentElement.classList.contains('Front18-media-wrapper-premium')) {
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'Front18-media-wrapper-premium';
+                                    media.parentNode.insertBefore(wrapper, media);
+                                    wrapper.appendChild(media);
                                 }
-                            });
-                            media.addEventListener('click', openModal);
-                        } else if (media.tagName === 'IFRAME') {
-                            // Iframes engolem cliques. Desativamos eventos neles para o parent capturar.
-                            media.classList.add('Front18-iframe-shielded');
-                            media.style.pointerEvents = 'none';
-                            if (media.parentElement) {
-                                media.parentElement.addEventListener('click', (e) => {
+                            }
+                            
+                            media.classList.add('Front18-media-blurred');
+                            
+                            if (media.tagName === 'VIDEO') {
+                                // Trava rígida contra AutoPlay e Controls nativos
+                                media.pause();
+                                media.dataset.agControls = media.hasAttribute('controls') ? 'true' : 'false';
+                                media.removeAttribute('controls');
+                                media.addEventListener('play', (e) => {
                                     if (document.documentElement.classList.contains('Front18-blur-active')) {
-                                        openModal(e);
+                                        e.preventDefault(); media.pause(); openModal(e);
                                     }
                                 });
+                                media.addEventListener('click', openModal);
+                            } else if (media.tagName === 'IFRAME') {
+                                // Iframes engolem cliques. Desativamos eventos neles para o parent capturar.
+                                media.classList.add('Front18-iframe-shielded');
+                                media.style.pointerEvents = 'none';
+                                if (media.parentElement) {
+                                    media.parentElement.addEventListener('click', (e) => {
+                                        if (document.documentElement.classList.contains('Front18-blur-active')) {
+                                            openModal(e);
+                                        }
+                                    });
+                                }
+                            } else {
+                                media.addEventListener('click', openModal);
                             }
-                        } else {
-                            media.addEventListener('click', openModal);
                         }
                     }
                 });

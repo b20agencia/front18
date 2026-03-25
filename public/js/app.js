@@ -208,7 +208,7 @@ async function registrarNoBackend(clientId, idade_estimada, aprovado) {
         // BaseURL resolvida dinamicamente baseada na origem atual do Iframe (para localhost MVC)
         const resolvedServerUrl = (window.__F18_SERVER_URL && window.__F18_SERVER_URL !== '') ? window.__F18_SERVER_URL : window.location.origin;
 
-        await fetch(resolvedServerUrl + '/public/api/track.php?action=verify&key=' + encodeURIComponent(clientId), {
+        await fetch(resolvedServerUrl + '/api/track.php?action=verify&key=' + encodeURIComponent(clientId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

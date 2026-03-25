@@ -7,6 +7,12 @@
     # Proteger a pasta SRC e VIEWS contra acesso direto pelo navegador (Ameaças)
     RewriteRule ^src/ - [F,L]
     RewriteRule ^views/ - [F,L]
+    
+    # Bypass para evitar que CSS/JS tentem ser servidos pelo index.php (Falso 404 MIME Type Error)
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -d
+    RewriteRule ^(.*)$ /public/$1 [L]
 
     # Redirecionar URL base limpa para o Controlador Principal (Front Controller /public/)
     RewriteCond %{REQUEST_URI} !^/public/

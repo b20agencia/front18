@@ -166,7 +166,8 @@ verifyBtn.addEventListener('click', async () => {
     isAnalyzing = true;
     livenessStep = 0;
     
-    verifyBtn.innerHTML = '<div class="spinner"></div> Executando I.A...';
+    verifyBtn.innerHTML = '<span class="btn-spinner"></span> ESCANEANDO FACE...';
+    verifyBtn.classList.add('analyzing');
     verifyBtn.disabled = true;
     
     checkLiveness(); // Inicia o loop de prova de vida
@@ -174,6 +175,8 @@ verifyBtn.addEventListener('click', async () => {
 
 async function finalizarBiometria(age) {
     isAnalyzing = false;
+    verifyBtn.classList.remove('analyzing');
+    verifyBtn.classList.remove('analyzing');
     verifyBtn.innerHTML = 'Análise Concluída';
     
     const aprovado = age >= 18;
@@ -196,6 +199,8 @@ async function finalizarBiometria(age) {
             }
         } else {
             isAnalyzing = false;
+            verifyBtn.classList.remove('analyzing');
+            verifyBtn.classList.remove('analyzing');
             verifyBtn.innerHTML = 'Analisar Novamente';
             verifyBtn.disabled = false;
         }

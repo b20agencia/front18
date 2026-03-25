@@ -26,7 +26,7 @@ try {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="public/css/front18.css" >
+    <link rel="stylesheet" href="public/css/front18.css?v=<?= time() ?>">
 </head>
 <body>
 
@@ -370,7 +370,7 @@ try {
     <section id="faq" style="padding: 80px 0;">
         <div class="container">
             <h2 class="gsap-up" style="text-align: center;">Perguntas Frequentes (Compliance Layer)</h2>
-            <p class="gsap-up" style="text-align: center; margin-top: 0.5rem; margin-bottom: 3rem; font-size: 1.1rem; color: var(--text-secondary); line-height: 1.6;">Tudo que você precisa saber antes de blindar a sua empresa digital.</p>
+            <p class="gsap-up" style="text-align: center; margin: 0.5rem auto 3rem auto; font-size: 1.1rem; color: var(--text-secondary); line-height: 1.6; max-width: 800px; display: block;">Tudo que você precisa saber antes de blindar a sua empresa digital.</p>
             <div class="faq-list">
 
             <div class="faq-item gsap-up stagger">

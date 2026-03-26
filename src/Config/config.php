@@ -10,9 +10,9 @@
 
 // Banco de Dados
 define('FRONT18_DB_HOST', 'localhost');
-define('FRONT18_DB_NAME', 'agegate');
-define('FRONT18_DB_USER', 'root');
-define('FRONT18_DB_PASS', 'root');
+define('FRONT18_DB_NAME', 'front18_main');
+define('FRONT18_DB_USER', 'front18_Admin');
+define('FRONT18_DB_PASS', 'W3RCyYX4s28UuyZ');
 
 // Segurança & Criptografia
 define('FRONT18_XOR_KEY', 'agegate_xor_key_2026');

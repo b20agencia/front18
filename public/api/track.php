@@ -22,7 +22,7 @@ error_reporting(E_ALL);
 // 1. COMPLIANCE JURÍDICO & CORS ESTrito (Validação B2B)
 // ========================================================
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_SERVER['HTTP_X_Front18_TOKEN'] ?? $_GET['key'] ?? ''; 
+$apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_SERVER['HTTP_X_FRONT18_TOKEN'] ?? $_GET['key'] ?? ''; 
 $action = $_GET['action'] ?? 'content';
 
 // Headers Universais de CORS e Autoridade
@@ -45,22 +45,9 @@ $clientId = 0;
 $domainId = 0;
 
 if (!$apiKey) {
-    // Bloqueio WAF: Scraper ou Integração malfeita
+    // Bloqueio WAF silencioso: Scraper passivo de internet ou Scanner batendo na API 
+    // Não inserimos no banco para evitar encher o disco com ruído inútil (Background Noise Alert)
     $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $ipMasked = $ip;
-    if (strpos($ip, ':') !== false) {
-        $ipParts = explode(':', $ip);
-        if (count($ipParts) >= 3) { $ipParts[count($ipParts)-1] = '****'; $ipParts[count($ipParts)-2] = '****'; }
-        $ipMasked = implode(':', $ipParts);
-    } else {
-        $ipParts = explode('.', $ip); 
-        if(count($ipParts) == 4) { $ipParts[3] = '***'; }
-        $ipMasked = implode('.', $ipParts);
-    }
-
-    $stmt = $pdo->prepare("INSERT INTO suspicious_activity (domain_id, ip_masked, reason) VALUES (0, ?, 'Bloqueio WAF L7: Missing X-API-KEY Header')");
-    $stmt->execute([$ipMasked]);
-    
     if ($origin) { header("Access-Control-Allow-Origin: $origin"); }
     http_response_code(401);
     die(json_encode(['success' => false, 'error' => 'Header X-API-KEY ou X-Front18-TOKEN ausente. Barreira SaaS ativa.']));
@@ -236,7 +223,13 @@ if ($action === 'verify') {
     $cpfMask = null;
     
     if (!empty($inputData['cpf_mask'])) {
-        $cpfMask = strip_tags($inputData['cpf_mask']); // Ex: 123.***.***-45
+        $cpfMask = strip_tags($inputData['cpf_mask']); // Ex: ***.***.789-45
+        
+        // Bloqueio de mal-intencionados que enviam lixo/scripts no lugar da máscara LGPD
+        if (!preg_match('/^\*\*\*\.\*\*\*\.\d{3}-\d{2}$/', $cpfMask)) {
+            http_response_code(400);
+            die(json_encode(['success' => false, 'error' => 'Acesso Negado: Estrutura da Mascara CPF inválida ou corrompida.']));
+        }
     }
     
     if (isset($inputData['ai_age']) && isset($inputData['ai_confidence'])) {

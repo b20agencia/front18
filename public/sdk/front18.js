@@ -97,11 +97,18 @@
             this.config = Object.assign({}, this.config, config);
             this.log('Front18 Iniciado...', this.config.secureMode ? '✅ [Modo Backend Autorizativo]' : '⚠️ [Modo Basic Blur]');
 
-            // 1. Busca a Configuração Dinâmica Central do SaaS (Nível WAF, SEO, etc)
-            if (this.config.apiKey) {
-                try {
+            // 1. Failsafe Primordial B2B: Zero-Trust Integrity
+            if (!this.config.apiKey || this.config.apiKey.trim() === '') {
+                this.log('🛑 Abortado: Motor Front18 inicializado sem API Key válida. Segurança desativada para evitar Falsos Bloqueios (Degradação Graciosa).');
+                this.releaseWPShield();
+                return;
+            }
+
+            // 2. Busca a Configuração Dinâmica Central do SaaS (Nível WAF, SEO, etc)
+            try {
                     let confUrl = new URL(this.config.apiEndpoint, window.location.href);
                     confUrl.searchParams.append('action', 'config');
+                    confUrl.searchParams.append('t', Date.now()); // Bypass de Borda p/ configs em tempo real
                     let confRes = await fetch(confUrl.toString(), {
                         headers: { 'X-API-KEY': this.config.apiKey }
                     });
@@ -130,12 +137,23 @@
                                 primary: payload.config.color_primary || '#6366f1'
                             };
 
-                            if (payload.config.privacy_config) {
-                                this.config.privacyConfig = payload.config.privacy_config;
-                            }
-                            if (payload.config.modal_config) {
-                                this.config.modalConfig = payload.config.modal_config;
-                            }
+                            // Mapeamento Garantido à Prova de Falhas (Se o cliente nunca salvou as abas no painel, força Defaults LGPD)
+                            this.config.privacyConfig = payload.config.privacy_config || {
+                                dpo_email: 'lgpd@seudominio.com',
+                                dpo_title: 'DPO / Encarregado de Dados',
+                                banner_title: 'Aviso de Privacidade (LGPD)',
+                                banner_text: 'Utilizamos identificadores criptográficos estritamente necessários para viabilizar a trava legal de acesso.',
+                                btn_accept: 'Compreendo e Aceito',
+                                btn_reject: 'Rejeitar Identificadores Opcionais',
+                                allow_reject: false
+                            };
+
+                            this.config.modalConfig = payload.config.modal_config || {
+                                title: 'Conteúdo Protegido',
+                                desc: 'Este portal contém material comercial destinado exclusivamente para o público adulto. É necessário comprovar a sua tutela legal.',
+                                btn_yes: 'Reconhecer e Continuar',
+                                btn_no: 'Sou menor de Idade (Sair)'
+                            };
 
                             this.log('Configurações SaaS Sincronizadas da Nuvem:', payload.config);
                         }
@@ -146,9 +164,8 @@
                 } catch(e) {
                     this.log('Fallback: Configs da Nuvem não acessíveis via rede. Usando emergência local.');
                 }
-            }
 
-            // 3. Verificação de SEO (Googlebot, Bingbot, etc) - Protege o tráfego orgânico B2B
+                // 3. Verificação de SEO (Googlebot, Bingbot, etc) - Protege o tráfego orgânico B2B
             if (this.config.seoSafe && this.isSafeBot()) {
                 this.log('🤖 Safe-Bot Detectado (SEO/WebCrawler). Barreira Front-end desativada em prol da indexação.');
                 this.releaseWPShield();
@@ -231,7 +248,6 @@
         },
 
         renderPrivacyBanner: function() {
-            if (localStorage.getItem('Front18_privacy_accepted')) return;
             
             const pc = this.config.privacyConfig;
             if (!pc) return;
@@ -367,7 +383,7 @@
                         <button class="f18-priv-btn accept" id="f18-btn-save-prefs">${pc.btn_accept || 'Salvar Escolhas e Fechar'}</button>
                     </div>
                     <div class="f18-priv-links">
-                        <a id="f18-link-dpo">${pc.dpo_title || 'Denúncia / Canal do DPO'}</a>
+                        <a id="f18-link-dpo">Denunciar</a>
                         <a href="${this.config.privacyUrl || '#'}" target="_blank">Política</a>
                         <a href="${this.config.termsUrl || '#'}" target="_blank">Termos</a>
                     </div>
@@ -421,7 +437,12 @@
             document.body.appendChild(banner);
             
             // Entrada suave (Animação popout)
-            setTimeout(() => { banner.classList.add('show'); }, 500);
+            setTimeout(() => { 
+                banner.classList.add('show'); 
+                if (localStorage.getItem('Front18_privacy_accepted')) {
+                    banner.classList.add('minimized');
+                }
+            }, 500);
             
             // Navigational Contexts
             const viewMain = document.getElementById('f18-view-main');
@@ -464,7 +485,8 @@
             document.getElementById('f18-btn-save-prefs').addEventListener('click', () => {
                 const isAnElement = document.getElementById('f18-chk-analytics');
                 localStorage.setItem('Front18_privacy_accepted', JSON.stringify({ analytics: isAnElement ? isAnElement.checked : true }));
-                removeBanner();
+                banner.classList.add('minimized');
+                switchView(viewMain);
             });
 
             // Submit DPO Form natively inside Javascript after required fields match
@@ -492,6 +514,7 @@
                     
                     if (r.ok) {
                         alert("Recebemos sua denúncia. \nA Central de Inteligência Jurídica analisará seu caso! \nSe houver risco de vida, ligue Imediatamente 190.");
+                        document.getElementById('f18-dpo-form').reset();
                         switchView(viewMain);
                         banner.classList.add('minimized');
                     } else {
@@ -770,6 +793,19 @@
                                 if (!media.parentElement.classList.contains('Front18-media-wrapper-premium')) {
                                     const wrapper = document.createElement('div');
                                     wrapper.className = 'Front18-media-wrapper-premium';
+                                    
+                                    // B2B Fix: Herança de Box-Model para Iframes e Videos que são fluidos (evita colapso pro canto esquerdo)
+                                    if (media.tagName === 'IFRAME' || media.tagName === 'VIDEO') {
+                                        wrapper.style.width = '100%';
+                                        wrapper.style.height = '100%';
+                                        wrapper.style.display = 'grid'; // Grid é obrigatório para as Trações Locais do PremiumBadge
+                                    } else {
+                                        if (media.classList.contains('w-full')) wrapper.classList.add('w-full');
+                                        if (media.classList.contains('h-full')) wrapper.classList.add('h-full');
+                                        if (media.style.width) wrapper.style.width = media.style.width;
+                                        if (media.style.height) wrapper.style.height = media.style.height;
+                                    }
+
                                     media.parentNode.insertBefore(wrapper, media);
                                     wrapper.appendChild(media);
                                 }
@@ -835,6 +871,19 @@
 
                 smartContainers.forEach(container => {
                     const isExplicit = container.dataset && container.dataset.front18 === 'locked';
+                    
+                    // Failsafe Crítico: Nunca transformar tag BODY ou HTML inteira do cliente num block Blur-media.
+                    // Isso impedia o site de funcionar corretamente e chamava o popup em qualquer lugar (falso Global Lock).
+                    const tagName = container.tagName.toUpperCase();
+                    const structIds = /^(page|wrapper|content|site-content|main|app|root)$/i;
+                    const structClasses = /\b(site-wrapper|page-wrapper|main-content)\b/i;
+                    
+                    if (!isExplicit) {
+                        if (tagName === 'BODY' || tagName === 'HTML' || tagName === 'MAIN') return;
+                        if (container.id && structIds.test(container.id)) return;
+                        if (container.className && typeof container.className === 'string' && structClasses.test(container.className)) return;
+                    }
+
                     // Ignora overlay do modal
                     if(!container.closest('#Front18-overlay') && !container.closest('#Front18-privacy-banner')) {
                         // Se não for explicitamente lockado manualmente, proteja headers/footers estruturais do Elementor
@@ -1265,33 +1314,39 @@
 
                             lockedAge = Math.round(detection.age);
 
-                            if (livenessStep === 0) {
-                                resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;">1. Olhe para a Câmera e <span style="color:#fbbf24;">VIRE O ROSTO PARA A DIREITA ➡️</span></span>`;
-                                if (nosePositionRatio < 0.35) {
-                                    livenessStep = 1;
-                                    attempts -= 300; // Bônus de tempo (+5s)
+                            if (typeof this.livenessChallenges === 'undefined') {
+                                // ANTI-SPOOFING SUPREMO: Desafios Randomizados
+                                // Evita completamente ataques de Replay de Vídeo e Fotos impressas.
+                                this.livenessChallenges = ['right', 'left', 'mouth'];
+                                for (let i = this.livenessChallenges.length - 1; i > 0; i--) {
+                                    const j = Math.floor(Math.random() * (i + 1));
+                                    [this.livenessChallenges[i], this.livenessChallenges[j]] = [this.livenessChallenges[j], this.livenessChallenges[i]];
                                 }
-                            } 
-                            else if (livenessStep === 1) {
-                                resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;">2. Perfeito! Agora <span style="color:#fbbf24;">VIRE PARA A ESQUERDA ⬅️</span></span>`;
-                                if (nosePositionRatio > 0.65) {
-                                    livenessStep = 2;
-                                    attempts -= 300; // Bônus de tempo (+5s)
-                                }
-                            } 
-                            else if (livenessStep === 2) {
-                                resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;">3. Último passo: <span style="color:#fbbf24;">ABRA A BOCA 😲</span> de frente pra câmera</span>`;
-                                if (mouthOpenDistance > 12 && nosePositionRatio > 0.4 && nosePositionRatio < 0.6) {
-                                    livenessStep = 3;
-                                }
+                                this.currentStepIndex = 0;
                             }
 
-                            if (livenessStep === 3) {
-                                // 🚀 PASSED ALL CHECKS! Liveness Provado!
+                            const currentTarget = this.livenessChallenges[this.currentStepIndex];
+
+                            if (currentTarget) {
+                                if (currentTarget === 'right') {
+                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex+1}: <span style="color:#fbbf24;">VIRE O ROSTO PARA A DIREITA ➡️</span></span>`;
+                                    if (nosePositionRatio < 0.35) { this.currentStepIndex++; attempts -= 250; }
+                                } 
+                                else if (currentTarget === 'left') {
+                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex+1}: <span style="color:#fbbf24;">VIRE O ROSTO PARA A ESQUERDA ⬅️</span></span>`;
+                                    if (nosePositionRatio > 0.65) { this.currentStepIndex++; attempts -= 250; }
+                                } 
+                                else if (currentTarget === 'mouth') {
+                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex+1}: <span style="color:#fbbf24;">ABRA A BOCA 😲</span> (Olhando pra frente)</span>`;
+                                    if (mouthOpenDistance > 12 && nosePositionRatio > 0.4 && nosePositionRatio < 0.6) { this.currentStepIndex++; attempts -= 250; }
+                                }
+                            } else {
+                                // 🚀 PASSED ALL CHECKS! Liveness Provado organicamente
                                 timerHud.style.display = 'none';
-                                resultMsg.innerHTML = `<span style="color:#10b981;">✅ Prova de Vida Confirmada! Distribuindo Idade Geométrica...</span>`;
+                                resultMsg.innerHTML = `<span style="color:#10b981;">✅ Autenticidade (Vida) Confirmada! Distribuindo Idade...</span>`;
                                 
                                 setTimeout(() => {
+                                    delete this.livenessChallenges;
                                     finalizeAI(lockedAge, 99.99); // Confiança máxima provada
                                 }, 1500);
                                 return;
@@ -1402,18 +1457,25 @@
                 if (this.isValidCPF(rawCpf)) {
                     btn.disabled = true;
                     btn.innerHTML = `<span style="display:flex; justify-content:center; width:100%"><div class="ag-spinner"></div></span>`;
-                    input.style.borderColor = '#10b981';
-                    err.style.color = '#10b981';
-                    err.innerHTML = 'CPF Válido (Check Modulo)! Sincronizando com a API...';
+                    input.style.borderColor = '#eab308';
+                    err.style.color = '#eab308';
+                    err.innerHTML = 'Analisando documento...';
                     
                     setTimeout(() => {
-                        this.config.cpfUsed = rawCpf;
-                        this.showReceiptBanner();
-                    }, 1200);
+                        input.style.borderColor = '#10b981';
+                        err.style.color = '#10b981';
+                        err.innerHTML = 'CPF Validado.';
+                        
+                        setTimeout(() => {
+                            this.config.cpfUsed = rawCpf;
+                            this.showReceiptBanner();
+                        }, 800);
+                    }, 2000);
+                    
                 } else {
                     input.style.borderColor = '#ef4444';
                     err.style.color = '#ef4444';
-                    err.innerHTML = 'Recusado. O CPF inserido possui numeração inidônea (Falso).';
+                    err.innerHTML = 'CPF Incorreto ou Formato Inválido.';
                     input.focus();
                 }
             });
@@ -1479,7 +1541,7 @@
                    <div style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 12px; padding: 16px; text-align: left; margin-bottom: 24px; display:flex; flex-direction:column; gap:8px;">
                         <div style="font-family:monospace; font-size:10px; font-weight:bold; color:#64748b; margin-bottom:4px;">STATUS DO HUB APROVADOR:</div>
                         <div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px;"><span>CONTRATO_BASE:</span> <span style="color:#f8fafc">${this.config.termsVersion}</span></div>
-                        <div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px;"><span>IA_LIVENESS_EST:</span> <span style="color:#10b981">${this.config.aiAge ? '~' + this.config.aiAge + ' ANOS (PASS)' : 'N/A'}</span></div>
+                        <div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px;"><span>IA_LIVENESS_EST:</span> <span style="color:#10b981">${this.config.aiAge ? (this.config.aiAge >= 21 ? '> 21 ANOS (PASS)' : '> 18 ANOS (PASS)') : 'N/A'}</span></div>
                         ${hasCpf ? `<div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px;"><span>KYC_CPF_MASK:</span> <span style="color:#fbbf24">${this.config.cpfUsed.replace(/\d{3}\.\d{3}/, '***.***')}</span></div>` : ''}
                         <div style="font-family:monospace; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between; padding-top:2px;"><span>NODE_CHAIN_HASH:</span> <span id="ag-hash-preview" style="color:#fff; opacity:0.5;">AGUARDANDO SINCRONIA...</span></div>
                    </div>
@@ -1499,15 +1561,16 @@
             }
 
             document.getElementById('ag-btn-download-txt').addEventListener('click', () => {
+                 const abstractAge = this.config.aiAge ? (this.config.aiAge >= 21 ? '> 21 ANOS' : '> 18 ANOS') : 'N/A';
                  const dataStr = "=================================================\n" +
                                  "     FRONT18 B2B - RECIBO DE CUSTÓDIA LEGAL      \n" +
                                  "=================================================\n" +
                                  "DATA TIMESTAMP:    " + new Date().toISOString() + "\n" +
                                  "DOMÍNIO ALVO:      " + window.location.hostname + "\n" +
                                  "TERMOS ASSINADOS:  " + this.config.termsVersion + "\n" +
-                                 "LIVENESS SCORE:    AGE ~" + this.config.aiAge + " (Conf: " + this.config.aiConfidence + "%)\n" +
+                                 "LIVENESS SCORE:    APROVADO (" + abstractAge + ")\n" +
                                  (this.config.cpfUsed ? "KYC CPF CHECK:     " + this.config.cpfUsed.replace(/\d{3}\.\d{3}/, '***.***') + "\n" : "") +
-                                 "STATUS LIBERAÇÃO:  APROVADO (NODE 200)\n" +
+                                 "STATUS LIBERAÇÃO:  AUTORIZADO (NODE 200)\n" +
                                  "-------------------------------------------------\n" +
                                  "Chave Blockchain Mestre da Sessão Atual: \n" + 
                                  (document.getElementById('ag-hash-preview').innerText) + "\n\n" +
@@ -1695,7 +1758,7 @@
                         if (dto.success && dto.secure_payload) {
                             try {
                                 const b64decoded = atob(dto.secure_payload);
-                                const masterKey = 'Front18_xor_key_2026'; 
+                                const masterKey = 'agegate_xor_key_2026'; 
                                 let trueLayout = '';
                                 
                                 // Máquina Cripto Engradada Desfazendo o nó (XOR Reverse Engine)
@@ -1761,15 +1824,17 @@
             } catch(e) {}
         }
 
-        window.Front18.init({
-            siteId: scriptTag.getAttribute('data-site-id') || 'remote_client',
-            apiEndpoint: scriptTag.getAttribute('data-api') || defaultApi,
-            apiKey: scriptTag.getAttribute('data-api-key') || null,
-            termsVersion: scriptTag.getAttribute('data-terms-version') || 'v1.0-2026',
-            denyUrl: scriptTag.getAttribute('data-deny-url') || null,
+        let globalConf = window.Front18Config || {};
+
+        window.Front18.init(Object.assign({
+            siteId: scriptTag.getAttribute('data-site-id') || globalConf.siteId || 'remote_client',
+            apiEndpoint: scriptTag.getAttribute('data-api') || globalConf.apiEndpoint || defaultApi,
+            apiKey: scriptTag.getAttribute('data-api-key') || globalConf.apiKey || null,
+            termsVersion: scriptTag.getAttribute('data-terms-version') || globalConf.termsVersion || 'v1.0-2026',
+            denyUrl: scriptTag.getAttribute('data-deny-url') || globalConf.denyUrl || null,
             secureMode: true,
             debug: false
-        });
+        }, globalConf));
     }
 
 })(window, document);

@@ -149,9 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Salvar Personalização UI e URLs Dinâmicas
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_appearance') {
-    $c_bg = preg_match('/^#[0-9a-fA-F]{3,6}$/', $_POST['color_bg'] ?? '') ? $_POST['color_bg'] : '#0f172a';
-    $c_txt = preg_match('/^#[0-9a-fA-F]{3,6}$/', $_POST['color_text'] ?? '') ? $_POST['color_text'] : '#f8fafc';
-    $c_pri = preg_match('/^#[0-9a-fA-F]{3,6}$/', $_POST['color_primary'] ?? '') ? $_POST['color_primary'] : '#6366f1';
+    $c_bg = preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['color_bg'] ?? '') ? $_POST['color_bg'] : '#0f172a';
+    $c_txt = preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['color_text'] ?? '') ? $_POST['color_text'] : '#f8fafc';
+    $c_pri = preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['color_primary'] ?? '') ? $_POST['color_primary'] : '#6366f1';
     
     $terms = filter_var($_POST['terms_url'] ?? '', FILTER_SANITIZE_URL) ?: null;
     $priv = filter_var($_POST['privacy_url'] ?? '', FILTER_SANITIZE_URL) ?: null;
@@ -224,9 +224,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $wp_url . '/wp-json/front18/v1/sync');
             curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             
             $pushData = [
                 'rules'  => $wp_rules,
+                'api_key' => $origin['api_key'],
+                'endpoint' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/api/track.php',
+                'script_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/sdk/front18.js?v=' . time(),
                 'config' => [
                     'display_mode' => !empty($origin['display_mode']) ? $origin['display_mode'] : 'global_lock',
                     'color_bg'     => !empty($origin['color_bg']) ? $origin['color_bg'] : '#0f172a'
@@ -1002,20 +1007,6 @@ $myOrigins = $myOrigins ?? [];
                                   <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500 transition-colors shadow-inner"></div>
                                 </label>
                             </div>
-                            
-                            <!-- IA Facial -->
-                            <div class="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors relative overflow-hidden">
-                                <span class="absolute top-0 right-0 bg-indigo-600 text-white font-bold text-[8px] px-2 py-0.5 uppercase tracking-wider rounded-bl-lg shadow-sm">Machine Learning Edge</span>
-                                <div>
-                                    <h5 class="font-bold text-sm text-slate-200 flex items-center gap-2 pt-1"><i class="ph-bold ph-face-mask text-indigo-400"></i> Escaneamento Biométrico Anti Crianças</h5>
-                                    <p class="text-[10px] text-slate-500 mt-1 max-w-lg">Liga a câmera do visitante para rodar detecção de idade local (Nenhum frame viaja à nuvem - Privacidade Garantida). Impede menores de clicarem em "Sim, tenho 18" impunemente.</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                  <input type="checkbox" name="age_estimation_active" value="1" class="sr-only peer" <?= (isset($config['age_estimation_active']) && $config['age_estimation_active']) ? 'checked' : '' ?>>
-                                  <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500 transition-colors shadow-inner"></div>
-                                </label>
-                            </div>
-
                         </div>
                     </div>
                 </form>
@@ -1037,7 +1028,12 @@ $myOrigins = $myOrigins ?? [];
                         formData.append('action', 'save_settings');
                         
                         fetch('?route=dashboard', { method: 'POST', body: formData })
-                        .then(() => {
+                        .then(res => {
+                            if(!res.ok) throw new Error("Erro de Servidor");
+                            return res.json();
+                        })
+                        .then(data => {
+                            if(data.error) throw new Error(data.error);
                             btn.innerHTML = '<i class="ph-bold ph-check text-lg"></i> <span>Configuração Sincronizada!</span>';
                             btn.classList.remove('bg-primary-600', 'hover:bg-primary-500');
                             btn.classList.add('bg-emerald-600', 'shadow-emerald-500/20');
@@ -1046,6 +1042,17 @@ $myOrigins = $myOrigins ?? [];
                                 btn.innerHTML = originalHTML;
                                 btn.classList.add('bg-primary-600', 'hover:bg-primary-500');
                                 btn.classList.remove('bg-emerald-600', 'shadow-emerald-500/20', 'opacity-80', 'cursor-not-allowed');
+                                btn.disabled = false;
+                            }, 3500);
+                        }).catch(err => {
+                            btn.innerHTML = '<i class="ph-bold ph-warning text-lg"></i> <span>Falha ao Salvar</span>';
+                            btn.classList.remove('bg-primary-600', 'hover:bg-primary-500');
+                            btn.classList.add('bg-red-600', 'shadow-red-500/20');
+                            alert("Falha de Integridade WAF: " + err.message);
+                            setTimeout(() => {
+                                btn.innerHTML = originalHTML;
+                                btn.classList.add('bg-primary-600', 'hover:bg-primary-500');
+                                btn.classList.remove('bg-red-600', 'shadow-red-500/20', 'opacity-80', 'cursor-not-allowed');
                                 btn.disabled = false;
                             }, 3500);
                         });

@@ -75,8 +75,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     elseif ($action === 'delete_plan') {
         $plan_id = (int)$_POST['plan_id'];
-        $pdo->prepare("DELETE FROM plans WHERE id = ?")->execute([$plan_id]);
-        $message = "Plano/SKU #$plan_id excluído permanentemente.";
+        
+        // Proteção de Integridade B2B (Evitar Orfanato de Clientes)
+        $stmtChk = $pdo->prepare("SELECT COUNT(*) FROM saas_users WHERE plan_id = ?");
+        $stmtChk->execute([$plan_id]);
+        if ($stmtChk->fetchColumn() > 0) {
+            $message = "⚠️ ERRO CRÍTICO: Não é possível deletar o Plano #$plan_id. Existem clientes B2B ativos amarrados a ele. Altere o plano dos clientes primeiro.";
+        } else {
+            $pdo->prepare("DELETE FROM plans WHERE id = ?")->execute([$plan_id]);
+            $message = "Plano/SKU #$plan_id excluído permanentemente.";
+        }
     }
     elseif ($action === 'change_client_plan') {
         $cli_id = (int)$_POST['client_id'];

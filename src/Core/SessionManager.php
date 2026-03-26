@@ -149,10 +149,10 @@ class SessionManager {
             }
         }
 
-        // Fase 3: Shield Anti-Spam / Rate Limiting Seguro (Relaxado temporariamente para testes/QA)
-        $stmtLimit = $pdo->prepare("SELECT COUNT(*) FROM access_logs WHERE ip_address = ? AND action = 'VERIFY_OPT_IN' AND created_at > (NOW() - INTERVAL 1 MINUTE)");
+        // Fase 3: Shield Anti-Spam / Rate Limiting Seguro (Protegendo contra DDoS)
+        $stmtLimit = $pdo->prepare("SELECT COUNT(*) FROM access_logs WHERE ip_address = ? AND action = 'VERIFY_OPT_IN' AND created_at > (NOW() - INTERVAL 10 MINUTE)");
         $stmtLimit->execute([$logIp]);
-        if ($stmtLimit->fetchColumn() >= 500) {
+        if ($stmtLimit->fetchColumn() >= 15) {
             self::logAudit('BLOCKED_RATE_LIMIT', null, $clientId);
             http_response_code(429); // 429 Too Many Requests
             die(json_encode(['success' => false, 'error' => 'Bloqueio de Segurança: Excesso de tentativas. Risco de mitigação ativo.']));

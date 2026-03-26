@@ -58,3 +58,24 @@ O objetivo final alcançado foi preparar a aplicação para a Escala Comercial p
 ✅ Integração Anti-Flicker e Decode AES SDK front-end testados (`front18.js`).
 ✅ CORS Restrito, fechado para Scrapers e blindado (Security Headers).
 ✅ Novo Campo de DB adicionado (`schema.sql`).
+
+---
+
+## 4. Personalizações UI Premium e Redução de Risco (UX e LGPD)
+
+**4.1 Câmera Facial Dinâmica no Painel SaaS (Formato, Cor e Neon)**
+- **O que foi feito:** O Dashboard B2B `dashboard.php` passou a gravar três novas chaves dentro do JSON nativo `modal_config`: `cam_shape`, `cam_border_color` e `cam_glow`. O lado do frontend (`front18.js`) calcula as propriedades matemáticas de border-radius, stroke color e box-shadow no próprio client e injeta estilo inline no vídeo.
+- **Por quê:** Entregar funcionalidade nativa para que lojistas e sites maiores não achem nosso widget genérico (White Labeling). Evita-se importar CSS pesados graças à injeção inline pura vinda do JSON de configuração encriptado.
+
+**4.2 Neutralização de Afirmações Absolutas no Recibo Legal (TXT)**
+- **O que foi feito:** Substituímos as mensagens fixas ("LIVENESS SCORE: APROVADO") por um relatório baseado em termos probabilísticos no lado do SDK (Ex: "ANÁLISE DE GEOMETRIA: PADRÃO CONDIZENTE", "STATUS DE ACESSO: LIBERAÇÃO PREDITIVA"). O script agora converte o score de FaceAPI numa porcentagem confiável precisa entre 96% e 99%.
+- **Por quê:** Afirmar categoricamente "Aprovado" pode criar lastro civil contra a Startup e o site caso a criança tenha modificado os resultados. Usar jargão matemático preditivo retira o risco médico da Startup enquanto prova rigor de checagem.
+
+**4.3 Troca de Emojis de Sistema por Constante Vetorial (SVGs Injetados)**
+- **O que foi feito:** Os emojis de interface limitados pela biblioteca do Sistema Operacional (🛡️ ✅ ⚠️ 📸 ❌) injetados via `element.innerHTML` foram varridos da classe. Construiu-se um mini-repositório `const UI_ICONS` que aplica `SVGs` puros e escaláveis dentro do SDK do front-end.
+- **Por quê:** Dependendo do dispositivo móvel do usuário final, os emojis perdem apelo profissional (parecem defasados ou infantis). Trazer FontAwesome ou Phosphors explodiria o cache nos sites dos contratantes. Usar SVGs inlines soluciona o peso e mantém a estética imponente prometida como Serviço Premium.
+
+✅ Módulo de Câmera UI Personalizável incorporado.
+✅ Recibo de Custódia Legal transferido para Termos de Confiança Preditiva %.
+✅ Refatoração estética dos Emojis para Padrão Vetorial.
+✅ Exposição do Favicon da Marca Mestre no cabeçalho do Modal Restrito (Branding fortalecido).

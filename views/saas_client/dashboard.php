@@ -161,7 +161,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'title' => htmlspecialchars($_POST['modal_title'] ?? 'Conteúdo Protegido'),
         'desc' => htmlspecialchars($_POST['modal_desc'] ?? 'Este portal contém material comercial destinado exclusivamente para o público adulto. É necessário comprovar a sua tutela legal.'),
         'btn_yes' => htmlspecialchars($_POST['modal_btn_yes'] ?? 'Reconhecer e Continuar'),
-        'btn_no' => htmlspecialchars($_POST['modal_btn_no'] ?? 'Sou menor de idade (Sair)')
+        'btn_no' => htmlspecialchars($_POST['modal_btn_no'] ?? 'Sou menor de idade (Sair)'),
+        'cam_shape' => htmlspecialchars($_POST['cam_shape'] ?? 'circle'),
+        'cam_border_color' => preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['cam_border_color'] ?? '') ? $_POST['cam_border_color'] : '#6366f1',
+        'cam_glow' => isset($_POST['cam_glow']) ? true : false
     ];
     $modalJson = json_encode($modalConfig);
     
@@ -1147,6 +1150,9 @@ $myOrigins = $myOrigins ?? [];
                     $mDesc = $mConf['desc'] ?? 'Este portal contém material comercial destinado exclusivamente para o público adulto. É necessário comprovar a sua tutela legal.';
                     $mYes = $mConf['btn_yes'] ?? 'Reconhecer e Continuar';
                     $mNo = $mConf['btn_no'] ?? 'Sou menor de idade (Sair)';
+                    $camShape = $mConf['cam_shape'] ?? 'circle';
+                    $camBorderColor = $mConf['cam_border_color'] ?? $config['color_primary'] ?? '#6366f1';
+                    $camGlow = !empty($mConf['cam_glow']);
                     ?>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
@@ -1175,6 +1181,32 @@ $myOrigins = $myOrigins ?? [];
                                         <input type="text" id="live_modal_btn_no" name="modal_btn_no" value="<?= htmlspecialchars($mNo) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-400 focus:outline-none focus:border-slate-500 transition-all font-mono">
                                     </div>
                                 </div>
+
+                                <hr class="border-slate-800 my-8">
+                                <h5 class="text-sm font-bold text-white mb-5 flex items-center gap-2"><i class="ph-bold ph-camera text-primary-400"></i> Estilo da Câmera Inteligente</h5>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Formato (Shape)</label>
+                                        <select id="live_cam_shape" name="cam_shape" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-primary-500 transition-all font-mono">
+                                            <option value="circle" <?= $camShape === 'circle' ? 'selected' : '' ?>>Círculo Perfeito (SaaS)</option>
+                                            <option value="squircle" <?= $camShape === 'squircle' ? 'selected' : '' ?>>Quadrado Arredondado</option>
+                                            <option value="square" <?= $camShape === 'square' ? 'selected' : '' ?>>Quadrado Tradicional</option>
+                                            <option value="rectangle" <?= $camShape === 'rectangle' ? 'selected' : '' ?>>Retangular Landscape</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cor da Borda</label>
+                                        <div class="flex items-center gap-2 relative">
+                                            <input type="color" id="live_cam_border_color" name="cam_border_color" value="<?= htmlspecialchars($camBorderColor) ?>" class="absolute top-0 left-0 w-10 h-10 opacity-0 cursor-pointer" oninput="document.getElementById('live_cam_border_hex').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
+                                            <div id="live_cam_border_preview" class="w-12 h-10 rounded-lg border border-slate-700 pointer-events-none" style="background-color: <?= htmlspecialchars($camBorderColor) ?>;"></div>
+                                            <input type="text" id="live_cam_border_hex" value="<?= htmlspecialchars($camBorderColor) ?>" placeholder="#HEX" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-3 text-xs text-white uppercase focus:outline-none font-mono" oninput="document.getElementById('live_cam_border_color').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <label class="flex items-center gap-3 cursor-pointer mt-5 bg-slate-900/50 p-4 rounded-xl border border-slate-800 hover:border-primary-500/50 transition-colors">
+                                    <input type="checkbox" id="live_cam_glow" name="cam_glow" value="1" <?= $camGlow ? 'checked' : '' ?> class="w-4 h-4 text-primary-500 bg-slate-900 border-slate-700 rounded focus:ring-primary-500 outline-none">
+                                    <span class="text-xs text-slate-300 font-bold">Ativar Efeito de Brilho Dinâmico (Neon Glow) na IA</span>
+                                </label>
                             </div>
                         </div>
 

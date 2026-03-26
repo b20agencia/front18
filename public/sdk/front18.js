@@ -1152,6 +1152,20 @@
         },
 
         startFaceScan: function() {
+            const camConf = this.config.modalConfig || {};
+            const camShape = camConf.cam_shape || 'circle';
+            const camColor = camConf.cam_border_color || (this.config.theme ? this.config.theme.primary : '#6366f1');
+            const camGlow = camConf.cam_glow ? `box-shadow: 0 0 40px ${camColor}80;` : 'box-shadow: 0 10px 30px rgba(0,0,0,0.6);';
+
+            let camRadius = '50%';
+            let camWidth = '220px';
+            let camHeight = '220px';
+            if (camShape === 'squircle') camRadius = '36px';
+            if (camShape === 'square') camRadius = '12px';
+            if (camShape === 'rectangle') { camRadius = '16px'; camWidth = '280px'; camHeight = '180px'; }
+
+            const camContainerStyle = `position:relative; width: ${camWidth}; height: ${camHeight}; margin: 0 auto; border-radius: ${camRadius}; overflow:hidden; border: 3px solid ${camColor}; ${camGlow} background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; transition: all 0.3s ease;`;
+
             const modalContent = document.getElementById('Front18-modal');
             modalContent.innerHTML = `
                 <div style="text-align:center;">
@@ -1161,10 +1175,9 @@
                    </div>
                    <h3 style="font-weight:700; font-size:20px; margin:-5px 0 10px; color:var(--ag-text);">Validação Facial <span style="color:var(--ag-primary);">(IA)</span></h3>
                    <p style="font-size:12px; color:rgba(255,255,255,0.6); margin:0 0 24px; line-height:1.5;">Protegido pela LGPD. O cálculo ocorre <b>exclusivamente em seu processador local</b>. Nós apenas recebemos o percentual final da sua idade geométrica.</p>
-                   
-                   <div style="position:relative; width: 220px; height: 220px; margin: 0 auto; border-radius:50%; overflow:hidden; border: 2px solid var(--ag-primary); box-shadow: 0 0 30px rgba(0,0,0,0.5); background:rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;">
+                   <div style="${camContainerStyle}">
                        <video id="ag-cam-feed" autoplay playsinline style="width:100%; height:100%; object-fit:cover; display:none; filter:contrast(1.1);"></video>
-                       <div id="ag-scan-line" style="position:absolute; top:0; left:0; width:100%; height:4px; background:var(--ag-primary); box-shadow:0 0 12px var(--ag-primary); animation: ag-scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; display:none;"></div>
+                       <div id="ag-scan-line" style="position:absolute; top:0; left:0; width:100%; height:4px; background:${camColor}; box-shadow:0 0 12px ${camColor}; animation: ag-scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; display:none;"></div>
                        <!-- Fallback visual (Scanning Grid) -->
                        <div id="ag-cam-fallback-grid" style="position:absolute; inset:0; background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.8) 120%), repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(255,255,255,0.03) 20px, rgba(255,255,255,0.03) 21px), repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,255,255,0.03) 20px, rgba(255,255,255,0.03) 21px); display:none;"></div>
                        

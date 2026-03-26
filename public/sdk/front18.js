@@ -1064,7 +1064,7 @@
 
                     setTimeout(() => {
                         if (this.config.aiEstimation) {
-                            this.startFaceScan();
+                            this.showValidationOptions();
                         } else {
                             this.showReceiptBanner(); // Obriga a exibição do Extrato de Proteção legal mesmo sem IA
                         }
@@ -1167,7 +1167,147 @@
             if (this.elements.rootWrapper) this.observer.observe(this.elements.rootWrapper, { attributes: true, attributeFilter: ['class'] });
         },
 
-        startFaceScan: function () {
+        showValidationOptions: function() {
+            const modalContent = document.getElementById('Front18-modal');
+            if(!modalContent) return;
+            
+            modalContent.innerHTML = `
+                <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
+                    <div style="text-align:center; margin-bottom:24px;">
+                        <div style="width:48px; height:48px; border-radius:12px; background:rgba(99, 102, 241, 0.1); color:#6366f1; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                            ${UI_ICONS.shield}
+                        </div>
+                        <h3 style="color:var(--ag-text); font-size:20px; font-weight:700; margin:0 0 8px;">Níveis de Proteção</h3>
+                        <p style="color:rgba(255,255,255,0.6); font-size:13px; margin:0; line-height:1.5;">O Lojista configurou o Motor B2B para aceitar seleção flexível. Escolha abaixo a assertividade biométrica que será aplicada.</p>
+                    </div>
+                    
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <button id="Front18-lvl-1" style="width:100%; background:rgba(30,41,59,0.5); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:16px; text-align:left; cursor:pointer; display:flex; gap:16px; align-items:center; transition: background 0.2s;">
+                            <div style="background:rgba(16, 185, 129, 0.1); color:#34d399; padding:10px; border-radius:8px; min-width:40px; display:flex; justify-content:center;">${UI_ICONS.eye}</div>
+                            <div>
+                                <strong style="color:var(--ag-text); font-size:15px; display:block; margin-bottom:4px;">1. Validação Simples</strong>
+                                <span style="color:rgba(255,255,255,0.5); font-size:12px; display:block;">Câmera passiva (Checa apenas se existe rosto fisicamente).</span>
+                            </div>
+                        </button>
+                        
+                        <button id="Front18-lvl-2" style="width:100%; background:rgba(30,41,59,0.5); border:1px solid rgba(56,189,248,0.3); border-radius:12px; padding:16px; text-align:left; cursor:pointer; display:flex; gap:16px; align-items:center; box-shadow:0 0 15px rgba(56,189,248,0.1); transition: background 0.2s;">
+                            <div style="background:rgba(56, 189, 248, 0.1); color:#38bdf8; padding:10px; border-radius:8px; min-width:40px; display:flex; justify-content:center;">${UI_ICONS.check}</div>
+                            <div>
+                                <strong style="color:var(--ag-text); font-size:15px; display:block; margin-bottom:4px;">2. Normal (Recomendada)</strong>
+                                <span style="color:rgba(255,255,255,0.5); font-size:12px; display:block;">Prova temporal contendo 2 desafios motores randômicos.</span>
+                            </div>
+                        </button>
+                        
+                        <button id="Front18-lvl-3" style="width:100%; background:rgba(30,41,59,0.5); border:1px solid rgba(239,68,68,0.2); border-radius:12px; padding:16px; text-align:left; cursor:pointer; display:flex; gap:16px; align-items:center; transition: background 0.2s;">
+                            <div style="background:rgba(239, 68, 68, 0.1); color:#ef4444; padding:10px; border-radius:8px; min-width:40px; display:flex; justify-content:center;">${UI_ICONS.warn}</div>
+                            <div>
+                                <strong style="color:var(--ag-text); font-size:15px; display:block; margin-bottom:4px;">3. Hard (Anti-Spoof / B2B)</strong>
+                                <span style="color:rgba(255,255,255,0.5); font-size:12px; display:block;">Rigor máximo. 3 Desafios. Tolerância Zero com colagens.</span>
+                            </div>
+                        </button>
+                        
+                        <button id="Front18-lvl-mobile" style="width:100%; background:linear-gradient(90deg, #6366f1 0%, #4f46e5 100%); border:1px solid rgba(99,102,241,0.5); border-radius:12px; padding:16px; text-align:left; cursor:pointer; display:flex; gap:16px; align-items:center; box-shadow:0 0 20px rgba(99,102,241,0.2); transition: transform 0.2s;">
+                            <div style="background:rgba(255, 255, 255, 0.2); color:#fff; padding:10px; border-radius:8px; min-width:40px; display:flex; justify-content:center;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                            </div>
+                            <div>
+                                <strong style="color:#ffffff; font-size:15px; display:block; margin-bottom:4px;">📱 Verificar com Celular (QR Code)</strong>
+                                <span style="color:rgba(255,255,255,0.8); font-size:12px; display:block;">Transfira o KYC para a super-câmera do seu smartphone.</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('Front18-lvl-1').addEventListener('click', () => { this.startFaceScan(1); });
+            document.getElementById('Front18-lvl-2').addEventListener('click', () => { this.startFaceScan(2); });
+            document.getElementById('Front18-lvl-3').addEventListener('click', () => { this.startFaceScan(3); });
+            document.getElementById('Front18-lvl-mobile').addEventListener('click', () => { this.startMobileHandoff(); });
+            
+            ['1', '2', '3', 'mobile'].forEach(id => {
+                const btn = document.getElementById('Front18-lvl-'+id);
+                if (btn && id !== 'mobile') {
+                    btn.addEventListener('mouseover', () => btn.style.background = 'rgba(51,65,85,0.9)');
+                    btn.addEventListener('mouseout', () => btn.style.background = 'rgba(30,41,59,0.5)');
+                } else if (btn) {
+                    btn.addEventListener('mouseover', () => btn.style.transform = 'translateY(-2px)');
+                    btn.addEventListener('mouseout', () => btn.style.transform = 'translateY(0)');
+                }
+            });
+        },
+
+        startMobileHandoff: async function() {
+            const modalContent = document.getElementById('Front18-modal');
+            modalContent.innerHTML = `<div style="text-align:center; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
+                <div class="ag-spinner" style="border-top-color:#6366f1; width:40px; height:40px; margin-bottom:20px;"></div>
+                <p style="color:#cbd5e1; font-weight:600;">Gerando Trânsito Seguro para o Smartphone...</p>
+            </div>`;
+            
+            const handoffApi = this.config.apiEndpoint.replace('track.php', 'handoff.php');
+            
+            try {
+                // Post to create the pending session
+                const fd = new FormData(); fd.append('action', 'create');
+                const p = await fetch(handoffApi, { method: 'POST', body: fd, mode: 'cors' });
+                const data = await p.json();
+                
+                if (data.success && data.token) {
+                    // Create the mobile target link
+                    const scriptDir = this.config.apiEndpoint.split('/api/')[0];
+                    const mobileUrl = `${scriptDir}/mobile_verify.php?token=${data.token}`;
+                    const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(mobileUrl)}`;
+                    
+                    modalContent.innerHTML = `
+                        <div style="text-align:center; animation: agFadeIn 0.5s forwards;">
+                            <h3 style="color:var(--ag-text); font-size:20px; font-weight:700; margin:0 0 16px;">📱 Verificar com Celular</h3>
+                            <p style="color:rgba(255,255,255,0.7); font-size:13px; line-height:1.6; margin-bottom:24px;">Use a câmera do seu celular para ler o <strong>QR Code</strong> abaixo.<br>Não feche esta janela, ela destravará magicamente na sua frente após terminar pelo celular.</p>
+                            
+                            <div style="background:#fff; padding:16px; border-radius:16px; display:inline-block; margin-bottom:24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                                <img src="${qrImg}" alt="QR Code" style="width:180px; height:180px; display:block;">
+                            </div>
+                            
+                            <div style="background:rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.2); border-radius:12px; padding:12px; color:#10b981; font-size:12px; font-weight:bold; display:flex; gap:12px; align-items:center; justify-content:center;">
+                                <div class="ag-spinner" style="width:16px; height:16px; border-width:2px; border-top-color:#10b981;"></div>
+                                Ouvindo Satélites... Aguardando sua ação no Celular...
+                            </div>
+                        </div>
+                    `;
+                    
+                    // The Ping Polling
+                    let limitTriggers = 300; // ~10 minutes
+                    const pollInterval = setInterval(async () => {
+                        limitTriggers--;
+                        if (limitTriggers < 0) { clearInterval(pollInterval); modalContent.innerHTML = '<p style="color:#ef4444;text-align:center;">Tempo esgotado para o QR Code. Dê F5.</p>'; return; }
+                        
+                        try {
+                            const resPol = await fetch(`${handoffApi}?action=status&token=${data.token}`, { mode: 'cors' });
+                            const rp = await resPol.json();
+                            
+                            if (rp.success && rp.status === 'approved') {
+                                clearInterval(pollInterval);
+                                modalContent.innerHTML = `
+                                    <div style="text-align:center; animation: agFadeIn 0.5s;">
+                                        <div style="width:64px; height:64px; border-radius:32px; background:linear-gradient(135deg, #10b981, #059669); box-shadow:0 0 30px rgba(16,185,129,0.4); display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        <h3 style="color:#fff; font-size:22px; font-weight:700; margin:0 0 8px;">Aprovado via Celular!</h3>
+                                        <p style="color:#94a3b8; font-size:14px;">Destravando sincronismo com o servidor corporativo...</p>
+                                    </div>
+                                `;
+                                setTimeout(() => { this.unlock(); }, 1800);
+                            }
+                        } catch(e) {}
+                    }, 2000); // Bate na API a cada 2 seg
+                    
+                } else {
+                    modalContent.innerHTML = `<p style="color:#ef4444; font-weight:bold;">Falha ao contactar Motor Crossover.</p>`;
+                }
+            } catch(e) {
+                modalContent.innerHTML = `<p style="color:#ef4444; font-weight:bold;">Erro Crossover: ${e.message}</p>`;
+            }
+        },
+
+        startFaceScan: function (validationLevel = 2) {
             const camConf = this.config.modalConfig || {};
             const camShape = camConf.cam_shape || 'circle';
             const camColor = camConf.cam_border_color || (this.config.theme ? this.config.theme.primary : '#6366f1');
@@ -1272,7 +1412,7 @@
             triggerBtn.style.opacity = '1';
             triggerBtn.style.pointerEvents = 'auto';
             triggerBtn.disabled = false;
-            
+
             // Máscara inicial de repouso antes do clique
             status.innerHTML = `<span style="color:#f8fafc; font-size:13px; text-align:center;"><br>${UI_ICONS.eye} Câmera pausada.<br><small style="color:#64748b;">Clique abaixo para se conectar ao Motor Seguro.</small></span>`;
             const spinnerNode = status.querySelector('.ag-spinner');
@@ -1316,14 +1456,14 @@
                             varSum += Math.pow(b - mean, 2);
                         }
                         const variance = varSum / pixels;
-                        
+
                         if (mean < 25) {
                             finalizeAI(0, 0); resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Lente Obstruída ou Escuridão.</span>`; return;
                         }
                         if (variance < 350) {
                             finalizeAI(0, 0); resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Falha Visual. Rosto Ausente.</span>`; return;
                         }
-                    } catch(e) {}
+                    } catch (e) { }
                     runInference();
                 };
 
@@ -1333,14 +1473,14 @@
                 const timerHud = document.getElementById('ag-cam-timer');
                 timerHud.style.display = 'block';
                 timerHud.innerHTML = `15s`;
-                
+
                 let isFinalized = false; // Barreira para previnir overlap pós-timeout
-                
+
                 const realTimeInterval = setInterval(() => {
                     if (isFinalized) { clearInterval(realTimeInterval); return; }
                     attemptsTime++;
                     const left = maxAttemptsTime - attemptsTime;
-                    
+
                     if (left <= 0) {
                         clearInterval(realTimeInterval);
                         isFinalized = true;
@@ -1358,25 +1498,33 @@
                         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
                         usingRealCamera = true;
                         video.srcObject = stream;
-                        
+
                         await new Promise((res) => {
                             video.onloadedmetadata = () => { video.play(); res(); };
                         });
-                        
+
                         status.style.display = 'none';
                         video.style.display = 'block';
 
                         resultMsg.innerHTML = `<span style="color:#38bdf8; font-weight:normal; font-size:12px;">Despertando Módulo Neural FaceAPI...<br>Isso pode levar alguns segundos.</span>`;
                         await this.loadEdgeAI();
-                        
+
                         if (isFinalized) return; // Se a IA tomou mais de 15s pra baixar da AWS/CDN, expulsa a execução tardia.
-                        
+
                         let lockedAge = 0;
-                        this.livenessChallenges = ['right', 'left', 'mouth'];
+                        if (validationLevel === 1) {
+                            this.livenessChallenges = [];
+                        } else if (validationLevel === 2) {
+                            this.livenessChallenges = ['right', 'mouth'];
+                        } else {
+                            this.livenessChallenges = ['right', 'left', 'mouth'];
+                        }
                         // Misturando de forma criptográfica (Aleatória)
-                        for (let i = this.livenessChallenges.length - 1; i > 0; i--) {
-                            const j = Math.floor(Math.random() * (i + 1));
-                            [this.livenessChallenges[i], this.livenessChallenges[j]] = [this.livenessChallenges[j], this.livenessChallenges[i]];
+                        if (this.livenessChallenges.length > 0) {
+                            for (let i = this.livenessChallenges.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [this.livenessChallenges[i], this.livenessChallenges[j]] = [this.livenessChallenges[j], this.livenessChallenges[i]];
+                            }
                         }
                         this.currentStepIndex = 0;
 
@@ -1399,7 +1547,7 @@
                             const bottomLip = detection.landmarks.positions[66];
 
                             const faceWidth = jawRight.x - jawLeft.x;
-                            const nosePositionRatio = (nose.x - jawLeft.x) / faceWidth; 
+                            const nosePositionRatio = (nose.x - jawLeft.x) / faceWidth;
                             const mouthOpenDistance = bottomLip.y - topLip.y;
 
                             lockedAge = Math.round(detection.age);
@@ -1424,21 +1572,21 @@
                                 timerHud.style.display = 'none';
                                 clearInterval(realTimeInterval);
                                 resultMsg.innerHTML = `<span style="color:#10b981;">${UI_ICONS.check} Autenticidade (Vida) Confirmada! Validando Idade...</span>`;
-                                
+
                                 setTimeout(() => {
                                     delete this.livenessChallenges;
                                     finalizeAI(lockedAge, 99.99);
                                 }, 1500);
                             }
                         };
-                        
+
                         validationLoop();
 
                     } catch (e) {
                         if (isFinalized) return;
                         clearInterval(realTimeInterval);
                         timerHud.style.display = 'none';
-                        if (usingRealCamera) { 
+                        if (usingRealCamera) {
                             const can = document.createElement('canvas'); can.width = video.videoWidth; can.height = video.videoHeight;
                             const ctx = can.getContext('2d'); ctx.drawImage(video, 0, 0, can.width, can.height);
                             checkVarianceFallback(ctx, can.width, can.height);

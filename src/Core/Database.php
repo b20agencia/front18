@@ -136,6 +136,20 @@ class Database {
             )
         ");
 
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS saas_handoff_sessions (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                token VARCHAR(64) UNIQUE NOT NULL,
+                origin_domain VARCHAR(255) NOT NULL,
+                ip_address VARCHAR(45) NOT NULL,
+                status VARCHAR(20) DEFAULT 'pending',
+                methods_used JSON NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NULL,
+                INDEX (token)
+            )
+        ");
+
         // Alimentar Planos Padrão do Sistema (Automático)
         $stmtPlans = $pdo->query("SELECT COUNT(*) FROM plans");
         if ($stmtPlans->fetchColumn() == 0) {
@@ -181,7 +195,7 @@ class Database {
         $columnsAccess = [
             "prev_hash VARCHAR(64) NULL", "current_hash VARCHAR(64) NULL", "server_signature VARCHAR(64) NULL", 
             "terms_version VARCHAR(20) NULL", "terms_hash VARCHAR(64) NULL", "client_id INT NOT NULL DEFAULT 0", "key_version VARCHAR(10) NULL",
-            "ai_estimated_age INT NULL", "ai_confidence_score DECIMAL(5,2) NULL"
+            "ai_estimated_age INT NULL", "ai_confidence_score DECIMAL(5,2) NULL", "verification_payload JSON NULL"
         ];
         foreach ($columnsAccess as $col) {
             $colName = explode(" ", $col)[0];

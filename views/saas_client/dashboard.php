@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         $originCount = (int)$stmtCount->fetchColumn();
         if ($originCount >= $maxDomains) {
-            $_SESSION['dashboard_error'] = "⚠️ O limite do seu Plano atual é de $maxDomains domínio(s). Faça o upgrade ou entre em contato com o suporte.";
+            $_SESSION['dashboard_error'] = "<i class=\"ph-bold ph-warning text-yellow-500 mr-2\"></i> O limite do seu Plano atual é de $maxDomains domínio(s). Faça o upgrade ou entre em contato com o suporte.";
         } else {
             $newKey = 'SaaS_' . strtoupper(substr(md5(uniqid()), 0, 16)) . rand(10,99);
             try { 
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $_SESSION['dashboard_success'] = "Domínio '$domain_url' adicionado com sucesso!";
             } catch(\PDOException $e) {
                 if (strpos($e->getMessage(), '1062 Duplicate entry') !== false) {
-                    $_SESSION['dashboard_error'] = "❌ O domínio '$domain_url' já foi registrado na base.";
+                    $_SESSION['dashboard_error'] = "<i class=\"ph-bold ph-x-circle text-red-500 mr-2\"></i> O domínio '$domain_url' já foi registrado na base.";
                 } else {
                     $_SESSION['dashboard_error'] = "Erro de integridade de banco de dados temporário.";
                 }

@@ -54,9 +54,9 @@
                 <p class="text-slate-400 leading-relaxed">Para não lidarmos com a transferência criminosa de fotos, toda a inferência matemática ocorre localmente. O motor algorítmico navega apenas pela memória volátil do aparelho celular ou computador do usuário:</p>
                 <div class="mt-4 bg-slate-900/50 p-4 border border-slate-800 rounded-lg">
                     <ul class="space-y-3 text-sm text-slate-300">
-                        <li class="flex items-start gap-3"><span class="text-emerald-400 mt-0.5">✅</span> <span><b>Zero Imagens Retidas:</b> Nenhuma foto ou fluxo de vídeo atravessa a internet para nossos servidores.</span></li>
-                        <li class="flex items-start gap-3"><span class="text-emerald-400 mt-0.5">✅</span> <span><b>Métricas Anônimas:</b> Apenas os <i>inteiros processados</i> (Idade e Precisão Geográfica) são enviados ao cofre do AgeGate, sem vinculação ao CPF.</span></li>
-                        <li class="flex items-start gap-3"><span class="text-emerald-400 mt-0.5">✅</span> <span><b>Oblitéração:</b> O stream de hardware morre instantaneamente na navegação (Menos de 2 segundos de execução).</span></li>
+                        <li class="flex items-start gap-3"><svg class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> <span><b>Zero Imagens Retidas:</b> Nenhuma foto ou fluxo de vídeo atravessa a internet para nossos servidores.</span></li>
+                        <li class="flex items-start gap-3"><svg class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> <span><b>Métricas Anônimas:</b> Apenas os <i>inteiros processados</i> (Idade e Precisão Geográfica) são enviados ao cofre do AgeGate, sem vinculação ao CPF.</span></li>
+                        <li class="flex items-start gap-3"><svg class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> <span><b>Oblitéração:</b> O stream de hardware morre instantaneamente na navegação (Menos de 2 segundos de execução).</span></li>
                     </ul>
                 </div>
             </div>

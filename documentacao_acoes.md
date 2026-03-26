@@ -79,3 +79,21 @@ O objetivo final alcançado foi preparar a aplicação para a Escala Comercial p
 ✅ Recibo de Custódia Legal transferido para Termos de Confiança Preditiva %.
 ✅ Refatoração estética dos Emojis para Padrão Vetorial.
 ✅ Exposição do Favicon da Marca Mestre no cabeçalho do Modal Restrito (Branding fortalecido).
+
+---
+
+## 5. Auditoria de Marca e Refatoração Preditiva (UX Banking)
+
+**5.1 Extirpação Final do Nomenclativo Legado (AgeGate -> Front18)**
+- **O que foi feito:** O sistema passou por um sweep profundo substituindo menções visuais remanescentes (`public/security.php`, `public/safe.php`, e log de custódia TXT no `front18.js`) do branding legado `AgeGate` a favor da nova e madura marca corporativa `Front18`.
+- **Por quê:** Entregas white-label e painéis B2B precisam ostentar uma narrativa impecável. Chaves e tokens do core backend (`$_SESSION`, crypt e DB) foram meticulosamente blindados contra replace indiscriminado.
+
+**5.2 Câmera Inteligente em Repouso e Auto-Start Imediato (UX Bancária)**
+- **O que foi feito:** O request do MediaDevices (câmera) foi reesculpido para disparar **exclusivamente** no gatilho do botão (clique em "Habilitar e Escanear Face"). Em conjunto, o cronômetro de limite engata um loop temporal inquebrável (`setInterval`) e começa a varrer os 15s instantaneamente enquanto a infraestrutura neural baixa e liga nos bastidores.
+- **Por quê:** Antes a câmera ligava no boot do modal, assustando visitantes no celular precocemente por falta de intenção. Além disso, o relógio do Liveness estava corrompido em amarra com os Frames Virtuais da GPU (o download da IA retinha mentalmente o cronômetro de começar, gerando ansiedade e frustração). O desmembramento trouxe precisão forense de 15s reais para abortar processos inválidos.
+
+### Últimos Check-ins do Orchestrator
+✅ Extinção segura do naming visual antigo consolidada.
+✅ Câmera em estado de Privacidade Absoluta (Opt-in Button).
+✅ Auto-Start Neural sem gargalo de percepção.
+✅ Timeout Temporizado blindado.

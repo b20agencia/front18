@@ -13,7 +13,6 @@ class Database {
 
     public static function getConnection() {
         if (self::$instance === null) {
-            try {
                 self::$instance = new PDO(
                     "mysql:host=" . FRONT18_DB_HOST . ";dbname=" . FRONT18_DB_NAME . ";charset=utf8mb4",
                     FRONT18_DB_USER,
@@ -21,11 +20,6 @@ class Database {
                 );
                 // Lança exceções automáticas em todos os erros de MySQL (Melhor prática OOP)
                 self::$instance->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            } catch (PDOException $e) {
-                // Previne crash com dump de senha em log, retorna Error 500 JSON Friendly
-                http_response_code(500);
-                die(json_encode(['success' => false, 'error' => 'Servidor de Distribuição temporariamente inacessível.']));
-            }
         }
         return self::$instance;
     }
@@ -210,7 +204,7 @@ class Database {
             "protection_level INT DEFAULT 1", "anti_scraping TINYINT(1) DEFAULT 0", "seo_safe TINYINT(1) DEFAULT 0", "is_active TINYINT(1) DEFAULT 1",
             "quota_exceeded_at DATETIME NULL", "server_validation_active TINYINT(1) DEFAULT 1", "age_estimation_active TINYINT(1) DEFAULT 0",
             "display_mode VARCHAR(20) DEFAULT 'global_lock'", "color_primary VARCHAR(20) DEFAULT '#6366f1'", "color_bg VARCHAR(20) DEFAULT '#0f172a'",
-            "color_text VARCHAR(20) DEFAULT '#f8fafc'", "wp_url VARCHAR(255) NULL", "wp_rules JSON NULL"
+            "color_text VARCHAR(20) DEFAULT '#f8fafc'", "wp_url VARCHAR(255) NULL", "wp_rules JSON NULL", "current_month_requests BIGINT DEFAULT 0",
         ];
         foreach ($columnsOrigins as $col) {
             $colName = explode(" ", $col)[0];

@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS `saas_origins` (
   `color_text` varchar(20) DEFAULT '#f8fafc',
   `wp_url` varchar(255) DEFAULT NULL,
   `wp_rules` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`wp_rules`)),
+  `current_month_requests` bigint(20) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `domain` (`domain`),

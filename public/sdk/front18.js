@@ -17,7 +17,7 @@
     if (document.documentElement && !document.getElementById('f18-fouc-shield')) {
         let esc = document.createElement('style');
         esc.id = 'f18-fouc-shield';
-        esc.textContent = 'html.F18-Early img, html.F18-Early video, html.F18-Early iframe, html.F18-Early picture { filter: blur(35px) grayscale(80%) !important; opacity:0.3 !important; pointer-events:none !important; } .front18-hide { opacity: 0 !important; }';
+        esc.textContent = 'html.F18-Early img, html.F18-Early video, html.F18-Early iframe, html.F18-Early picture, html.F18-Early .elementor-section[data-settings*="background_background"], html.F18-Early .e-parent[data-settings*="background_background"], html.F18-Early [data-front18="locked"], html.F18-Early .wp-block-cover { filter: blur(35px) grayscale(80%) !important; opacity:0.3 !important; pointer-events:none !important; } .front18-hide { opacity: 0 !important; }';
         document.documentElement.appendChild(esc);
         document.documentElement.classList.add('F18-Early');
     }
@@ -181,7 +181,7 @@
             window.addEventListener('storage', (e) => {
                 if (e.key === this.config.storageKey && e.newValue) {
                     this.log('Sincronizando Sessão via Cross-Tab! Liberando tela desta aba.');
-                    this.unlock();
+                    window.location.reload();
                 }
             });
 
@@ -212,6 +212,7 @@
                 if (this.config.secureMode) {
                     this.loadSecureContent().then(() => {
                         this.releaseWPShield();
+                        this.unlock();
                     }).catch((e) => {
                         this.log('Aviso: Cookie Backend Expirou ou Falso Teto! Repuxando UI de Validação forçada.', e);
                         localStorage.removeItem(this.config.storageKey); // Derruba a fraude
@@ -220,6 +221,7 @@
                     });
                 } else {
                     this.releaseWPShield();
+                    this.unlock();
                 }
                 
                 return;
@@ -367,9 +369,9 @@
                     
                     ${pc.allow_reject ? `
                     <div class="f18-toggles-wrap" style="max-height: 100px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 14px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                            <div><div style="font-size:12px;font-weight:700">Essenciais (Nível B2B)</div><div style="font-size:10px;opacity:0.6">Motor do Front18. (Sempre Ativo)</div></div>
-                            <label class="f18-switch"><input type="checkbox" checked disabled><span class="f18-slider"></span></label>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:6px; opacity:0.6; align-items:center;">
+                            <div><div style="font-size:12px;font-weight:700">Essenciais (Nível B2B) 🔒</div><div style="font-size:10px;opacity:0.8">Motor do Front18. (Sempre Ativo)</div></div>
+                            <label class="f18-switch" style="cursor:not-allowed; opacity:0.7"><input type="checkbox" checked disabled><span class="f18-slider" style="cursor:not-allowed"></span></label>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
                             <div><div style="font-size:12px;font-weight:700">Analíticos e Marketing</div><div style="font-size:10px;opacity:0.6">Velocidade e Métricas.</div></div>
@@ -482,11 +484,16 @@
             });
 
             // Save Prefs
-            document.getElementById('f18-btn-save-prefs').addEventListener('click', () => {
+            document.getElementById('f18-btn-save-prefs').addEventListener('click', (e) => {
+                e.stopPropagation();
                 const isAnElement = document.getElementById('f18-chk-analytics');
                 localStorage.setItem('Front18_privacy_accepted', JSON.stringify({ analytics: isAnElement ? isAnElement.checked : true }));
+                
+                // Hide view cleanly 
+                viewDpo.classList.remove('active');
+                viewMain.classList.add('active'); // Garante que a DOM View base estará ativa nativamente caso ele abrate de novo
+                
                 banner.classList.add('minimized');
-                switchView(viewMain);
             });
 
             // Submit DPO Form natively inside Javascript after required fields match
@@ -506,9 +513,12 @@
                 try {
                     let ep = new URL(this.config.apiEndpoint, window.location.href);
                     ep.searchParams.append('action', 'dpo_report');
+                    let hdrs = { 'Content-Type': 'application/json' };
+                    if (this.config.apiKey) hdrs['X-API-KEY'] = this.config.apiKey;
+
                     let r = await fetch(ep.toString(), {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: hdrs,
                         body: JSON.stringify({ name, email, reporterRole, violationType, contentUrl, message: msg })
                     });
                     
@@ -535,7 +545,7 @@
             if (this.config.mode === 'blur_media') {
                 this.blurMediaInstead();
                 this.startObserver();
-                this.releaseWPShield(); // Remove o escudo anti-flicker imediatamente para não causar tela branca
+                // O releaseWPShield() será chamado pelo blurMediaInstead assim que o parse Elementor concluir (50ms).
             } else {
                 this.lockPage();
                 this.createOverlay();
@@ -674,6 +684,7 @@
                     width: 100% !important; height: 100% !important;
                     z-index: 1000000 !important;
                     background: rgba(15, 23, 42, 0.5) !important;
+                    pointer-events: none !important;
                 }
                 
                 /* The Badge text */
@@ -808,6 +819,7 @@
 
                                     media.parentNode.insertBefore(wrapper, media);
                                     wrapper.appendChild(media);
+                                    wrapper.addEventListener('click', openModal);
                                 }
                             }
                             
@@ -1191,13 +1203,22 @@
                             this.config.aiConfidence = conf;
                             this.showReceiptBanner(); // Fase 4
                         }, 1800);
-                    } else {
+                    } else if (age >= 18) {
                         resultMsg.innerHTML = `<span style="color:#fbbf24;">⚠️ Idade Preditiva Crítica (< 21): ~${age} Anos.<br><small style="color:#64748b; font-weight:normal;">Redirecionando para Validação Biográfica Severa...</small></span>`;
                         setTimeout(() => {
                             this.config.aiAge = age;
                             this.config.aiConfidence = conf;
                             this.startCpfCheck(); // Fase 3
                         }, 2000);
+                    } else {
+                        let redirectUrl = this.config.denyUrl;
+                        if (!redirectUrl) {
+                            let saasHost = '';
+                            try { saasHost = new URL(this.config.apiEndpoint, window.location.href).origin; } catch(e) { saasHost = ''; }
+                            redirectUrl = saasHost + '/public/safe.php';
+                        }
+                        resultMsg.innerHTML = `<span style="color:#ef4444;">❌ Reprovado por Anomalia de Idade (< 18)<br><small style="color:#64748b">Acesso Restrito ao Público Adulto.</small></span>`;
+                        setTimeout(() => { window.location.href = redirectUrl; }, 3500);
                     }
 
                 } else {
@@ -1274,7 +1295,7 @@
                         await this.loadEdgeAI(); // Carrega dinamicamente a inteligência pesada do CDN
                         
                         let attempts = 0;
-                        const maxAttempts = 1800; // ~30 segundos (60 FPS)
+                        const maxAttempts = 900; // ~15 segundos cronometrados 1:1 (60 FPS)
                         let livenessStep = 0; // 0: Olhar reto, 1: Olhar Direita, 2: Olhar Esquerda, 3: Abrir Boca
                         let lockedAge = 0;
                         
@@ -1285,7 +1306,7 @@
                             if (attempts >= maxAttempts) {
                                 timerHud.style.display = 'none';
                                 finalizeAI(0, 0);
-                                resultMsg.innerHTML = `<span style="color:#ef4444;">❌ Tempo Esgotado.<br><small style="color:#64748b;font-weight:normal">Não conseguimos comprovar vida no prazo (30s).</small></span>`;
+                                resultMsg.innerHTML = `<span style="color:#ef4444;">❌ Tempo Esgotado.<br><small style="color:#64748b;font-weight:normal">Não conseguimos comprovar vida no prazo (15s).</small></span>`;
                                 return;
                             }
                             timerHud.innerHTML = `${Math.ceil((maxAttempts - attempts) / 60)}s`;
@@ -1330,15 +1351,15 @@
                             if (currentTarget) {
                                 if (currentTarget === 'right') {
                                     resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex+1}: <span style="color:#fbbf24;">VIRE O ROSTO PARA A DIREITA ➡️</span></span>`;
-                                    if (nosePositionRatio < 0.35) { this.currentStepIndex++; attempts -= 250; }
+                                    if (nosePositionRatio < 0.35) { this.currentStepIndex++; }
                                 } 
                                 else if (currentTarget === 'left') {
                                     resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex+1}: <span style="color:#fbbf24;">VIRE O ROSTO PARA A ESQUERDA ⬅️</span></span>`;
-                                    if (nosePositionRatio > 0.65) { this.currentStepIndex++; attempts -= 250; }
+                                    if (nosePositionRatio > 0.65) { this.currentStepIndex++; }
                                 } 
                                 else if (currentTarget === 'mouth') {
                                     resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex+1}: <span style="color:#fbbf24;">ABRA A BOCA 😲</span> (Olhando pra frente)</span>`;
-                                    if (mouthOpenDistance > 12 && nosePositionRatio > 0.4 && nosePositionRatio < 0.6) { this.currentStepIndex++; attempts -= 250; }
+                                    if (mouthOpenDistance > 12 && nosePositionRatio > 0.4 && nosePositionRatio < 0.6) { this.currentStepIndex++; }
                                 }
                             } else {
                                 // 🚀 PASSED ALL CHECKS! Liveness Provado organicamente
@@ -1593,9 +1614,9 @@
                  // Já enviamos o HIT em syncReceiptHash. Apenas seguimos os processos locais!
                  this.saveUXSession();
                  if (this.config.secureMode) {
-                     this.loadSecureContent().then(() => this.unlock()).catch(() => this.unlock());
+                     this.loadSecureContent().then(() => window.location.reload()).catch(() => window.location.reload());
                  } else {
-                     this.unlock();
+                     window.location.reload();
                  }
             });
         },
@@ -1645,7 +1666,7 @@
 
                     // Passo 2: Com o Token ativo gravado no Device, podemos chamar injeção final
                     await this.loadSecureContent();
-                    this.unlock();
+                    window.location.reload();
 
                 } catch (e) {
                     if (e.message === 'FATAL_SaaS_LOCK') {
@@ -1663,11 +1684,11 @@
                     try { localStorage.setItem(this.config.storageKey + '_fallback', Date.now()); } catch(err){}
                     
                     setTimeout(() => {
-                        this.unlock();
+                        window.location.reload();
                     }, 500);
                 }
             } else {
-                this.unlock();
+                window.location.reload();
             }
         },
 
@@ -1675,13 +1696,16 @@
             if (this.observer) this.observer.disconnect(); 
             if(this.elements.overlay) this.elements.overlay.classList.remove('Front18-active');
             
+            // Garantia de limpeza completa, não importando qual config.mode o servidor resolveu!
+            document.documentElement.classList.remove('Front18-blur-active', 'Front18-no-scroll');
+            
             if (this.config.mode === 'blur_media') {
                 if (this.lazyObserver) { this.lazyObserver.disconnect(); this.lazyObserver = null; }
                 
-                document.documentElement.classList.remove('Front18-blur-active'); // Remove lock mestre
-                
-                // Remove Obliteração Sledgehammer
+                // Remove Obliteração Sledgehammer das classes Elementor e containers
                 document.querySelectorAll('.Front18-smart-container-blurred').forEach(el => {
+                    el.style.removeProperty('background');
+                    el.style.removeProperty('background-image');
                     el.style.background = el.dataset.agOrigBg || ''; 
                     el.style.backgroundImage = el.dataset.agOrigBgImg || '';
                     el.classList.remove('Front18-smart-container-blurred');
@@ -1689,12 +1713,13 @@
                 document.querySelectorAll('.Front18-media-wrapper-premium').forEach(el => {
                     let child = el.firstElementChild;
                     if(child) el.parentNode.insertBefore(child, el);
-                    el.remove();
+                    if(el.parentNode) el.parentNode.removeChild(el);
                 });
                 
                 const medias = document.querySelectorAll('.Front18-media-blurred');
                 medias.forEach(media => {
                     media.classList.remove('Front18-media-blurred');
+                    media.style.removeProperty('filter');
                     media.style.filter = 'none'; // Libera explícito pro navegador
                     
                     if (media.tagName === 'VIDEO') {
@@ -1709,7 +1734,6 @@
             } else {
                 if (this.elements.rootWrapper) this.elements.rootWrapper.classList.remove('Front18-locked');
                 else document.body.classList.remove('Front18-locked-fallback');
-                document.documentElement.classList.remove('Front18-no-scroll');
             }
 
             // Integrando a ponte nativa pro Antiflicker do Front18 Plugin no WordPress MasterHub
@@ -1739,6 +1763,7 @@
                     const url = new URL(src, window.location.href);
                     url.searchParams.append('action', 'content');
                     url.searchParams.append('id', contentId);
+                    url.searchParams.append('t', Date.now()); // Cache Buster Definitivo
 
                     const headers = { 'Cache-Control': 'no-cache, no-store' };
                     if (this.config.apiKey) headers['X-API-KEY'] = this.config.apiKey;
@@ -1747,6 +1772,7 @@
                     if (srvToken) headers['X-Front18-Token'] = srvToken;
 
                     const res = await fetch(url.toString(), {
+                        method: 'POST', // Impede Cache Agressivo de CDN/Cloudflare que corrompe a chave de Sessão Dinâmica
                         credentials: 'omit', // JWT-like Model (Stateless Header)
                         headers: headers
                     });
@@ -1758,18 +1784,42 @@
                         if (dto.success && dto.secure_payload) {
                             try {
                                 const b64decoded = atob(dto.secure_payload);
-                                const masterKey = 'agegate_xor_key_2026'; 
-                                let trueLayout = '';
+                                const parts = b64decoded.split('::');
+                                if (parts.length !== 2) throw new Error('Cipher format error');
+                                // Master Key agora é o Token Único da Sessão (Anti-Replay e 100% Seguro)
+                                const curSrvToken = this.config.sessionToken || localStorage.getItem('ag_srv_token');
+                                const masterKey = curSrvToken ? curSrvToken : 'agegate_xor_key_2026';
                                 
-                                // Máquina Cripto Engradada Desfazendo o nó (XOR Reverse Engine)
-                                for(let i = 0; i < b64decoded.length; i++) {
-                                    trueLayout += String.fromCharCode(b64decoded.charCodeAt(i) ^ masterKey.charCodeAt(i % masterKey.length));
-                                }
+                                const ivStr = atob(parts[0]);
+                                const iv = new Uint8Array(ivStr.length);
+                                for (let i = 0; i < ivStr.length; i++) iv[i] = ivStr.charCodeAt(i);
+                                
+                                const encStr = atob(parts[1]);
+                                const encryptedData = new Uint8Array(encStr.length);
+                                for (let i = 0; i < encStr.length; i++) encryptedData[i] = encStr.charCodeAt(i);
+                                
+                                let keyStr = masterKey.substring(0, 32);
+                                while (keyStr.length < 32) keyStr += '0';
+                                const keyData = new TextEncoder().encode(keyStr);
+                                
+                                const cryptoKey = await window.crypto.subtle.importKey(
+                                    'raw', keyData, { name: 'AES-CBC' }, false, ['decrypt']
+                                );
+                                
+                                const decryptedBuffer = await window.crypto.subtle.decrypt(
+                                    { name: 'AES-CBC', iv: iv },
+                                    cryptoKey,
+                                    encryptedData
+                                );
+                                
+                                const trueLayout = new TextDecoder().decode(decryptedBuffer);
 
-                                el.innerHTML = decodeURIComponent(escape(trueLayout)); 
+                                // Injeção Atômica sem Flicker
+                                el.innerHTML = trueLayout; 
                                 el.removeAttribute('data-Front18'); 
                             } catch (decErr) {
-                                throw new Error('Falha no motor de descodificação XOR Array');
+                                console.error('Crypto AES-256 Engine Failure:', decErr);
+                                throw new Error('Falha no motor de descodificação AES-256');
                             }
                         } else throw new Error(dto.error || 'Server Sessao API Rejeitou.');
                     } else throw new Error('Acesso Proibido 401 via PHP Controller -> ' + res.status);

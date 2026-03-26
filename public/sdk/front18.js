@@ -1267,10 +1267,24 @@
                 }
             };
 
+            // O Botão começa pronto para o usuário engatilhar a câmera (Modo Bancário)
+            triggerBtn.innerHTML = `<span style="display:flex; align-items:center; justify-content:center; gap:8px;">${UI_ICONS.camera} Habilitar e Escanear Face</span>`;
+            triggerBtn.style.opacity = '1';
+            triggerBtn.style.pointerEvents = 'auto';
+            triggerBtn.disabled = false;
+            
+            // Máscara inicial de repouso antes do clique
+            status.innerHTML = `<span style="color:#f8fafc; font-size:13px; text-align:center;"><br>${UI_ICONS.eye} Câmera pausada.<br><small style="color:#64748b;">Clique abaixo para se conectar ao Motor Seguro.</small></span>`;
+            const spinnerNode = status.querySelector('.ag-spinner');
+            if (spinnerNode) spinnerNode.style.display = 'none';
+
             const runScanProcess = async () => {
                 triggerBtn.style.display = 'none';
                 scanLine.style.display = 'block';
                 document.getElementById('ag-cam-fallback-grid').style.display = 'block';
+
+                status.style.display = 'block';
+                status.innerHTML = `<div class="ag-spinner"></div><br><span style="color:#38bdf8; font-weight:normal; font-size:12px;">Calibrando Módulo Preditivo...<br>Isso pode levar alguns segundos.</span>`;
 
                 const runInference = () => {
                     let steps = 0;
@@ -1289,69 +1303,95 @@
                 };
 
                 const checkVarianceFallback = (ctx, w, h) => {
-                    const frame = ctx.getImageData(0, 0, w, h).data;
-                    let brightSum = 0, pixels = 0;
-                    for (let i = 0; i < frame.length; i += 16) {
-                        brightSum += (0.2126 * frame[i] + 0.7152 * frame[i + 1] + 0.0722 * frame[i + 2]);
-                        pixels++;
-                    }
-                    const mean = brightSum / pixels;
-                    let varSum = 0;
-                    for (let i = 0; i < frame.length; i += 16) {
-                        let b = (0.2126 * frame[i] + 0.7152 * frame[i + 1] + 0.0722 * frame[i + 2]);
-                        varSum += Math.pow(b - mean, 2);
-                    }
-                    const variance = varSum / pixels;
-
-                    if (mean < 25) {
-                        finalizeAI(0, 0);
-                        resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Lente Obstruída ou Ambiente em Escuridão Tóxica.</span>`;
-                        return;
-                    }
-                    if (variance < 350) {
-                        finalizeAI(0, 0);
-                        resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Rosto humano não detectado. Baixa complexidade visual.</span>`;
-                        return;
-                    }
+                    let brightSum = 0, pixels = 0, varSum = 0;
+                    try {
+                        const frame = ctx.getImageData(0, 0, w, h).data;
+                        for (let i = 0; i < frame.length; i += 16) {
+                            brightSum += (0.2126 * frame[i] + 0.7152 * frame[i + 1] + 0.0722 * frame[i + 2]);
+                            pixels++;
+                        }
+                        const mean = brightSum / pixels;
+                        for (let i = 0; i < frame.length; i += 16) {
+                            let b = (0.2126 * frame[i] + 0.7152 * frame[i + 1] + 0.0722 * frame[i + 2]);
+                            varSum += Math.pow(b - mean, 2);
+                        }
+                        const variance = varSum / pixels;
+                        
+                        if (mean < 25) {
+                            finalizeAI(0, 0); resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Lente Obstruída ou Escuridão.</span>`; return;
+                        }
+                        if (variance < 350) {
+                            finalizeAI(0, 0); resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Falha Visual. Rosto Ausente.</span>`; return;
+                        }
+                    } catch(e) {}
                     runInference();
                 };
 
-                // Ultimate ML Pipeline: Liveness Geométrico Baseado em Face-API (68 pontos)
-                if (usingRealCamera && video.videoWidth > 0) {
+                // CRONÔMETRO INDEPENDENTE EM TEMPO REAL: Inicia forte junto com o Clique!
+                let attemptsTime = 0;
+                const maxAttemptsTime = 15;
+                const timerHud = document.getElementById('ag-cam-timer');
+                timerHud.style.display = 'block';
+                timerHud.innerHTML = `15s`;
+                
+                let isFinalized = false; // Barreira para previnir overlap pós-timeout
+                
+                const realTimeInterval = setInterval(() => {
+                    if (isFinalized) { clearInterval(realTimeInterval); return; }
+                    attemptsTime++;
+                    const left = maxAttemptsTime - attemptsTime;
+                    
+                    if (left <= 0) {
+                        clearInterval(realTimeInterval);
+                        isFinalized = true;
+                        timerHud.style.display = 'none';
+                        finalizeAI(0, 0);
+                        resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Tempo Esgotado.<br><small style="color:#64748b;font-weight:normal">Não comprovamos sua vida no prazo estipulado (15s).</small></span>`;
+                        if (stream) stream.getTracks().forEach(t => t.stop());
+                    } else {
+                        timerHud.innerHTML = `${left}s`;
+                    }
+                }, 1000);
+
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                        usingRealCamera = true;
+                        video.srcObject = stream;
+                        
+                        await new Promise((res) => {
+                            video.onloadedmetadata = () => { video.play(); res(); };
+                        });
+                        
+                        status.style.display = 'none';
+                        video.style.display = 'block';
+
                         resultMsg.innerHTML = `<span style="color:#38bdf8; font-weight:normal; font-size:12px;">Despertando Módulo Neural FaceAPI...<br>Isso pode levar alguns segundos.</span>`;
-
-                        await this.loadEdgeAI(); // Carrega dinamicamente a inteligência pesada do CDN
-
-                        let attempts = 0;
-                        const maxAttempts = 900; // ~15 segundos cronometrados 1:1 (60 FPS)
-                        let livenessStep = 0; // 0: Olhar reto, 1: Olhar Direita, 2: Olhar Esquerda, 3: Abrir Boca
+                        await this.loadEdgeAI();
+                        
+                        if (isFinalized) return; // Se a IA tomou mais de 15s pra baixar da AWS/CDN, expulsa a execução tardia.
+                        
                         let lockedAge = 0;
-
-                        const timerHud = document.getElementById('ag-cam-timer');
-                        timerHud.style.display = 'block';
+                        this.livenessChallenges = ['right', 'left', 'mouth'];
+                        // Misturando de forma criptográfica (Aleatória)
+                        for (let i = this.livenessChallenges.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [this.livenessChallenges[i], this.livenessChallenges[j]] = [this.livenessChallenges[j], this.livenessChallenges[i]];
+                        }
+                        this.currentStepIndex = 0;
 
                         const validationLoop = async () => {
-                            if (attempts >= maxAttempts) {
-                                timerHud.style.display = 'none';
-                                finalizeAI(0, 0);
-                                resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Tempo Esgotado.<br><small style="color:#64748b;font-weight:normal">Não conseguimos comprovar vida no prazo (15s).</small></span>`;
-                                return;
-                            }
-                            timerHud.innerHTML = `${Math.ceil((maxAttempts - attempts) / 60)}s`;
-                            attempts++;
+                            if (isFinalized) return;
 
-                            // Faz a inferência real com TinyFaceDetector + Landmarks + AgeGender
                             const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
                                 .withFaceLandmarks()
                                 .withAgeAndGender();
 
                             if (!detection) {
-                                resultMsg.innerHTML = `<span style="color:#fbbf24;">${UI_ICONS.eye} Rosto humano não detectado. Centralize o rosto bem iluminado!</span>`;
+                                resultMsg.innerHTML = `<span style="color:#fbbf24;">${UI_ICONS.eye} Rosto humano não detectado. Centralize bem iluminado!</span>`;
                                 requestAnimationFrame(validationLoop); return;
                             }
 
-                            // Matemática do Liveness
                             const jawLeft = detection.landmarks.positions[0];
                             const jawRight = detection.landmarks.positions[16];
                             const nose = detection.landmarks.positions[30];
@@ -1359,98 +1399,63 @@
                             const bottomLip = detection.landmarks.positions[66];
 
                             const faceWidth = jawRight.x - jawLeft.x;
-                            const nosePositionRatio = (nose.x - jawLeft.x) / faceWidth; // de 0 a 1
+                            const nosePositionRatio = (nose.x - jawLeft.x) / faceWidth; 
                             const mouthOpenDistance = bottomLip.y - topLip.y;
 
                             lockedAge = Math.round(detection.age);
-
-                            if (typeof this.livenessChallenges === 'undefined') {
-                                // ANTI-SPOOFING SUPREMO: Desafios Randomizados
-                                // Evita completamente ataques de Replay de Vídeo e Fotos impressas.
-                                this.livenessChallenges = ['right', 'left', 'mouth'];
-                                for (let i = this.livenessChallenges.length - 1; i > 0; i--) {
-                                    const j = Math.floor(Math.random() * (i + 1));
-                                    [this.livenessChallenges[i], this.livenessChallenges[j]] = [this.livenessChallenges[j], this.livenessChallenges[i]];
-                                }
-                                this.currentStepIndex = 0;
-                            }
-
                             const currentTarget = this.livenessChallenges[this.currentStepIndex];
 
                             if (currentTarget) {
                                 if (currentTarget === 'right') {
-                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex + 1}: <span style="color:#fbbf24;">VIRE O ROSTO PARA A DIREITA ${UI_ICONS.arrowR}</span></span>`;
+                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex + 1}: <span style="color:#fbbf24;">VIRE o Rosto p/ DIREITA ${UI_ICONS.arrowR}</span></span>`;
                                     if (nosePositionRatio < 0.35) { this.currentStepIndex++; }
                                 }
                                 else if (currentTarget === 'left') {
-                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex + 1}: <span style="color:#fbbf24;">VIRE O ROSTO PARA A ESQUERDA ${UI_ICONS.arrowL}</span></span>`;
+                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex + 1}: <span style="color:#fbbf24;">VIRE o Rosto p/ ESQUERDA ${UI_ICONS.arrowL}</span></span>`;
                                     if (nosePositionRatio > 0.65) { this.currentStepIndex++; }
                                 }
                                 else if (currentTarget === 'mouth') {
-                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex + 1}: <span style="color:#fbbf24;">ABRA A BOCA ${UI_ICONS.mouth}</span> (Olhando pra frente)</span>`;
+                                    resultMsg.innerHTML = `<span style="color:#38bdf8; font-size:15px; font-weight:bold;"> Passo ${this.currentStepIndex + 1}: <span style="color:#fbbf24;">ABRA A BOCA ${UI_ICONS.mouth}</span></span>`;
                                     if (mouthOpenDistance > 12 && nosePositionRatio > 0.4 && nosePositionRatio < 0.6) { this.currentStepIndex++; }
                                 }
+                                requestAnimationFrame(validationLoop);
                             } else {
-                                // 🚀 PASSED ALL CHECKS! Liveness Provado organicamente
+                                isFinalized = true;
                                 timerHud.style.display = 'none';
-                                resultMsg.innerHTML = `<span style="color:#10b981;">${UI_ICONS.check} Autenticidade (Vida) Confirmada! Distribuindo Idade...</span>`;
-
+                                clearInterval(realTimeInterval);
+                                resultMsg.innerHTML = `<span style="color:#10b981;">${UI_ICONS.check} Autenticidade (Vida) Confirmada! Validando Idade...</span>`;
+                                
                                 setTimeout(() => {
                                     delete this.livenessChallenges;
-                                    finalizeAI(lockedAge, 99.99); // Confiança máxima provada
+                                    finalizeAI(lockedAge, 99.99);
                                 }, 1500);
-                                return;
                             }
-
-                            // Continua o Loop
-                            requestAnimationFrame(validationLoop);
                         };
-
-                        // Fire the loop
+                        
                         validationLoop();
 
                     } catch (e) {
-                        // Falha no load do CDN, bloqueio local, sem internet
-                        const can = document.createElement('canvas'); can.width = video.videoWidth; can.height = video.videoHeight;
-                        const ctx = can.getContext('2d'); ctx.drawImage(video, 0, 0, can.width, can.height);
-                        checkVarianceFallback(ctx, can.width, can.height);
+                        if (isFinalized) return;
+                        clearInterval(realTimeInterval);
+                        timerHud.style.display = 'none';
+                        if (usingRealCamera) { 
+                            const can = document.createElement('canvas'); can.width = video.videoWidth; can.height = video.videoHeight;
+                            const ctx = can.getContext('2d'); ctx.drawImage(video, 0, 0, can.width, can.height);
+                            checkVarianceFallback(ctx, can.width, can.height);
+                        } else {
+                            runInference();
+                        }
                     }
                 } else {
-                    runInference(); // Fallback mode
+                    if (!isFinalized) {
+                        clearInterval(realTimeInterval);
+                        timerHud.style.display = 'none';
+                        runInference();
+                    }
                 }
             };
 
             triggerBtn.addEventListener('click', runScanProcess);
-
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-                    .then(s => {
-                        usingRealCamera = true;
-                        stream = s;
-                        video.srcObject = stream;
-                        video.onloadedmetadata = () => {
-                            video.play();
-                            status.style.display = 'none';
-                            video.style.display = 'block';
-                            triggerBtn.innerHTML = `<span style="display:flex; align-items:center; justify-content:center; gap:8px;">${UI_ICONS.camera} Escanear e Analisar Face</span>`;
-                            triggerBtn.style.opacity = '1';
-                            triggerBtn.style.pointerEvents = 'auto';
-                        };
-                    })
-                    .catch(err => {
-                        document.getElementById('ag-cam-fallback-grid').style.display = 'block';
-                        status.innerHTML = "Câmera Insegura (HTTP).<br><br><b>Motor Simulador Preditivo Ativo</b><br>Tabela Biométrica Base";
-                        triggerBtn.innerHTML = "Simular Extração Biométrica";
-                        triggerBtn.style.opacity = '1';
-                        triggerBtn.style.pointerEvents = 'auto';
-                    });
-            } else {
-                document.getElementById('ag-cam-fallback-grid').style.display = 'block';
-                status.innerHTML = "Sem suporte WebRTC Local.<br><br><b>Motor Preditivo...</b>";
-                triggerBtn.innerHTML = "Simular Extração Biométrica";
-                triggerBtn.style.opacity = '1';
-                triggerBtn.style.pointerEvents = 'auto';
-            }
         },
         isValidCPF: function (cpf) {
             if (typeof cpf !== 'string') return false;

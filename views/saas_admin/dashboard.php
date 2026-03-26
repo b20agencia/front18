@@ -241,8 +241,7 @@ $suspicious = $stmtSus ? $stmtSus->fetchAll(PDO::FETCH_ASSOC) : [];
     <!-- Sidebar Admin -->
     <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 shrink-0 shadow-2xl">
         <div class="h-16 flex items-center px-6 border-b border-white/5 shrink-0 bg-gradient-to-r from-slate-900 to-slate-800">
-            <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse mr-3 shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
-            <img src="public/img/logo.png" alt="Front18 Logo" style="height: 24px; object-fit: contain;">
+            <img src="public/img/logo.png" alt="Front18 Logo" style="height: 18px; object-fit: contain;">
         </div>
         
         <div class="px-6 py-4 flex items-center gap-3 border-b border-white/5 bg-black/20">

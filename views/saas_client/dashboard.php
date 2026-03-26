@@ -351,10 +351,7 @@ $myOrigins = $myOrigins ?? [];
     <!-- Sidebar SaaS -->
     <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 shrink-0">
         <div class="h-16 flex items-center px-6 border-b border-slate-800 shrink-0">
-            <div class="w-6 h-6 rounded bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center mr-2 shadow-lg shadow-primary-500/20">
-                <i class="ph-bold ph-shield-check text-white text-xs"></i>
-            </div>
-            <img src="public/img/logo.png" alt="Front18 Logo" style="height: 24px; object-fit: contain;">
+            <img src="public/img/logo.png" alt="Front18 Logo" style="height: 18px; object-fit: contain;">
         </div>
         
         <div class="px-6 py-4 flex items-center gap-3 border-b border-slate-800">

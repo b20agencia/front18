@@ -198,7 +198,7 @@
                 }
             });
 
-            // 4. Injeta o Portal de Privacidade LGPD (Se ativo), independentemente do AgeGate estar aberto ou destrancado
+            // 4. Injeta o Portal de Privacidade LGPD (Se ativo), independentemente do Front18 estar aberto ou destrancado
             if (this.config.privacyConfig) {
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', () => this.renderPrivacyBanner());
@@ -1636,7 +1636,7 @@
                     "-------------------------------------------------\n" +
                     "Chave Blockchain Mestre da Sessão Atual: \n" +
                     (document.getElementById('ag-hash-preview').innerText) + "\n\n" +
-                    "O porte desta chave atesta a comprovação moral de acesso restrito \naos portais protegidos pela tecnologia AgeGate Front18.\n";
+                    "O porte desta chave atesta a comprovação moral de acesso restrito \naos portais protegidos pela tecnologia Front18.\n";
 
                 const blob = new Blob([dataStr], { type: 'text/plain;charset=utf-8' });
                 const url = window.URL.createObjectURL(blob);

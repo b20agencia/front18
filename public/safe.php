@@ -46,7 +46,7 @@
 
         <div class="mt-8 pt-6 border-t border-slate-800/50">
             <p class="text-[10px] text-slate-500 font-mono flex items-center justify-center gap-1 uppercase tracking-widest">
-                <i class="ph-fill ph-shield-check text-indigo-500 text-sm"></i> Operação de Diligência Protegida por AgeGate Pro
+                <i class="ph-fill ph-shield-check text-indigo-500 text-sm"></i> Operação de Diligência Protegida por Front18 Pro
             </p>
         </div>
     </div>

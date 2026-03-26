@@ -219,6 +219,7 @@ class Database {
             "quota_exceeded_at DATETIME NULL", "server_validation_active TINYINT(1) DEFAULT 1", "age_estimation_active TINYINT(1) DEFAULT 0",
             "display_mode VARCHAR(20) DEFAULT 'global_lock'", "color_primary VARCHAR(20) DEFAULT '#6366f1'", "color_bg VARCHAR(20) DEFAULT '#0f172a'",
             "color_text VARCHAR(20) DEFAULT '#f8fafc'", "wp_url VARCHAR(255) NULL", "wp_rules JSON NULL", "current_month_requests BIGINT DEFAULT 0",
+            "blur_amount INT DEFAULT 25", "blur_selector VARCHAR(255) DEFAULT 'img, video, iframe, [data-front18=\"locked\"]'"
         ];
         foreach ($columnsOrigins as $col) {
             $colName = explode(" ", $col)[0];

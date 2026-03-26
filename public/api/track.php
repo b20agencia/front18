@@ -37,9 +37,8 @@ if ($origin) {
     $originCleanNoWww = str_replace('www.', '', $originClean);
 }
 
-// FASE 1: CORS Preflight Restrito (Fim da Reflexão Cega)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    if ($originCleanNoWww) {
+if ($originCleanNoWww) {
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         $stmtOrigin = $pdo->prepare("SELECT id FROM saas_origins WHERE REPLACE(REPLACE(domain, 'https://', ''), 'http://', '') = ? LIMIT 1");
         $stmtOrigin->execute([$originCleanNoWww]);
         if ($stmtOrigin->fetchColumn()) {
@@ -50,7 +49,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             http_response_code(200);
             exit;
         }
+        http_response_code(403);
+        exit;
+    } else {
+        // Enviar CORS para conexões aprovadas durante uso contínuo
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
     }
+} else if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(403);
     exit;
 }
@@ -180,6 +186,8 @@ if ($action === 'config') {
             'server_validation' => isset($clienteSaaS['server_validation_active']) ? (int)$clienteSaaS['server_validation_active'] : 1,
             'ai_estimation' => isset($clienteSaaS['age_estimation_active']) ? (int)$clienteSaaS['age_estimation_active'] : 0,
             'display_mode'  => $clienteSaaS['display_mode'] ?? 'global_lock',
+            'blur_amount'   => isset($clienteSaaS['blur_amount']) ? (int)$clienteSaaS['blur_amount'] : 25,
+            'blur_selector' => !empty($clienteSaaS['blur_selector']) ? $clienteSaaS['blur_selector'] : 'img, video, iframe, [data-front18="locked"]',
             'privacy_config' => !empty($clienteSaaS['privacy_config']) ? json_decode($clienteSaaS['privacy_config'], true) : null,
             'modal_config' => !empty($clienteSaaS['modal_config']) ? json_decode($clienteSaaS['modal_config'], true) : null
         ]

@@ -126,6 +126,54 @@ $allowedLevel = (int)$planDetails['allowed_level'];
 $hasSeoSafe = (bool)$planDetails['has_seo_safe'];
 $hasAntiScraping = (bool)$planDetails['has_anti_scraping'];
 
+// ======== WEHOOK SYNC HELPER ========
+function dispatchWordPressSync($pdo, $userId) {
+    $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg, blur_amount, blur_selector, wp_rules, wp_url FROM saas_origins WHERE user_id = ? LIMIT 1");
+    $stmtOrigin->execute([$userId]);
+    $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
+    
+    if (empty($origin['wp_url']) || empty($origin['api_key'])) return ['status' => false, 'msg' => 'Sem URL do WP configurada.'];
+    
+    $wp_url = rtrim($origin['wp_url'], '/');
+    $wp_rules = !empty($origin['wp_rules']) ? json_decode($origin['wp_rules'], true) : ['global'=>false,'home'=>false,'cpts'=>[]];
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $wp_url . '/wp-json/front18/v1/sync');
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    
+    $pushData = [
+        'rules'  => $wp_rules,
+        'api_key' => $origin['api_key'],
+        'endpoint' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/api/track.php',
+        'script_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/sdk/front18.js?v=' . time(),
+        'config' => [
+            'display_mode'  => !empty($origin['display_mode']) ? $origin['display_mode'] : 'global_lock',
+            'color_bg'      => !empty($origin['color_bg']) ? $origin['color_bg'] : '#0f172a',
+            'blur_amount'   => isset($origin['blur_amount']) ? (int)$origin['blur_amount'] : 25,
+            'blur_selector' => !empty($origin['blur_selector']) ? $origin['blur_selector'] : 'img, video, iframe, [data-front18="locked"]'
+        ]
+    ];
+    
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($pushData));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $origin['api_key']
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    
+    $response = curl_exec($ch);
+    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpcode >= 200 && $httpcode < 300) {
+        return ['status' => true, 'msg' => 'Sincronizado.'];
+    }
+    return ['status' => false, 'msg' => "Erro $httpcode: $response"];
+}
+
 // Salvar Configurações Globais de WAF e Nível de Proteção (Ajax-friendly)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_settings') {
     $level = isset($_POST['level']) ? (int)$_POST['level'] : 1;
@@ -135,16 +183,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $ai_estimation = isset($_POST['age_estimation_active']) ? 1 : 0;
     $display_mode = isset($_POST['display_mode']) && in_array($_POST['display_mode'], ['blur_media', 'global_lock']) ? $_POST['display_mode'] : 'global_lock';
     
+    $blur_amount = isset($_POST['blur_amount']) ? (int)$_POST['blur_amount'] : 25;
+    $blur_selector = isset($_POST['blur_selector']) ? trim($_POST['blur_selector']) : '';
+    if (empty($blur_selector)) {
+        $blur_selector = 'img, video, iframe, [data-front18="locked"]';
+    }
+    
     // ENFORCEMENT JURÍDICO/COMERCIAL BACKEND (Verdadeiro Sincronismo)
     // Garante que o usuário NUNCA salve configurações maiores que seu Plano atual permite
     if ($level > $allowedLevel) { $level = $allowedLevel; }
     if (!$hasSeoSafe) { $seo_safe = 0; }
     if (!$hasAntiScraping) { $anti_scrap = 0; }
     
-    $stmtUpdate = $pdo->prepare("UPDATE saas_origins SET protection_level = ?, anti_scraping = ?, seo_safe = ?, server_validation_active = ?, age_estimation_active = ?, display_mode = ? WHERE user_id = ?");
-    $stmtUpdate->execute([$level, $anti_scrap, $seo_safe, $server_validation, $ai_estimation, $display_mode, $userId]);
+    $stmtUpdate = $pdo->prepare("UPDATE saas_origins SET protection_level = ?, anti_scraping = ?, seo_safe = ?, server_validation_active = ?, age_estimation_active = ?, display_mode = ?, blur_amount = ?, blur_selector = ? WHERE user_id = ?");
+    $stmtUpdate->execute([$level, $anti_scrap, $seo_safe, $server_validation, $ai_estimation, $display_mode, $blur_amount, $blur_selector, $userId]);
     
-    die(json_encode(['success' => true]));
+    $sync = dispatchWordPressSync($pdo, $userId);
+    die(json_encode(['success' => true, 'sync' => $sync]));
 }
 
 // Salvar Personalização UI e URLs Dinâmicas
@@ -170,6 +225,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     $stmtUpd = $pdo->prepare("UPDATE saas_origins SET color_bg = ?, color_text = ?, color_primary = ?, terms_url = ?, privacy_url = ?, deny_url = ?, modal_config = ? WHERE user_id = ?");
     $stmtUpd->execute([$c_bg, $c_txt, $c_pri, $terms, $priv, $deny, $modalJson, $userId]);
+    
+    $sync = dispatchWordPressSync($pdo, $userId);
     die(json_encode(['success' => true]));
 }
 
@@ -192,6 +249,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     $stmtUpd = $pdo->prepare("UPDATE saas_origins SET privacy_config = ? WHERE user_id = ?");
     $stmtUpd->execute([$jsonConfig, $userId]);
+    
+    $sync = dispatchWordPressSync($pdo, $userId);
     die(json_encode(['success' => true]));
 }
 
@@ -212,56 +271,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $stmtUpd = $pdo->prepare("UPDATE saas_origins SET wp_url = ?, wp_rules = ? WHERE user_id = ?");
     $stmtUpd->execute([$wp_url, $jsonRules, $userId]);
     
-    // Executa o Push Imediatamente
-    $pushStatus = false;
-    $pushMsg = "URL não definida.";
-    if (!empty($wp_url)) {
-        $wp_url_clean = str_replace(['https://', 'http://', 'www.'], '', $wp_url);
-        $wp_url_clean = rtrim(explode('/', $wp_url_clean)[0], '/');
-
-        $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg FROM saas_origins WHERE user_id = ? AND domain LIKE ? LIMIT 1");
-        $stmtOrigin->execute([$userId, "%$wp_url_clean%"]);
-        $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
-        
-        if ($origin && $origin['api_key']) {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $wp_url . '/wp-json/front18/v1/sync');
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            
-            $pushData = [
-                'rules'  => $wp_rules,
-                'api_key' => $origin['api_key'],
-                'endpoint' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/api/track.php',
-                'script_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/sdk/front18.js?v=' . time(),
-                'config' => [
-                    'display_mode' => !empty($origin['display_mode']) ? $origin['display_mode'] : 'global_lock',
-                    'color_bg'     => !empty($origin['color_bg']) ? $origin['color_bg'] : '#0f172a'
-                ]
-            ];
-            
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($pushData));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $origin['api_key']
-            ]);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 8); // timeout de 8s para o admin da outra ponta salvar os options
-            
-            $response = curl_exec($ch);
-            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($httpcode >= 200 && $httpcode < 300) {
-                $pushStatus = true;
-                $pushMsg = "Push Webhook sincronizado com sucesso no WordPress remoto.";
-            } else {
-                $pushStatus = false;
-                $pushMsg = "Servidor remoto WordPress negou a conexão (Erro $httpcode). Verifique a URL e a API Key no seu painel. Resposta: $response";
-            }
-        }
-    }
+    // Executa o Push Global Automatizado
+    $sync = dispatchWordPressSync($pdo, $userId);
+    $pushStatus = $sync['status'];
+    $pushMsg = $sync['msg'];
     
     die(json_encode(['success' => true, 'push_status' => $pushStatus, 'push_msg' => $pushMsg]));
 }
@@ -855,6 +868,66 @@ $myOrigins = $myOrigins ?? [];
                         </div>
                     </div>
 
+                    <!-- BLUR SETTINGS (Apenas se Media Teaser ou Custom) -->
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <h4 class="font-black text-white text-lg mb-1 flex items-center gap-2"><span class="bg-primary-500 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs"><i class="ph-bold ph-sliders"></i></span> Personalização do Blur (Avançado)</h4>
+                        <p class="text-[11px] text-slate-400 mb-6 pb-4 border-b border-slate-800">Defina o que receberá o efeito de desfoque e a intensidade (recomendado para Media Teaser).</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Nível de Blur -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Intensidade do Desfoque (px)</label>
+                                <div class="flex items-center gap-4">
+                                    <input type="range" name="blur_amount" min="5" max="50" value="<?= htmlspecialchars($config['blur_amount'] ?? 25) ?>" 
+                                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                        oninput="document.getElementById('blur_amount_display').innerText = this.value + 'px'">
+                                    <div class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 font-mono text-emerald-400 font-bold shrink-0" id="blur_amount_display">
+                                        <?= htmlspecialchars($config['blur_amount'] ?? 25) ?>px
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-slate-500 mt-2">Dica: Um blur de 20-30px costuma ser ideal para ocultar mídias (+18) sem parecer uma mancha.</p>
+                            </div>
+
+                            <!-- Seletor CSS via Checkboxes -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">O que você deseja ocultar?</label>
+                                <?php $current_selector = !empty($config['blur_selector']) ? $config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]'; ?>
+                                
+                                <div class="grid grid-cols-2 gap-3 mb-2" id="blur_checkbox_group">
+                                    <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
+                                        <input type="checkbox" value="img" class="w-4 h-4 text-emerald-500 bg-slate-800 border-slate-600 rounded cursor-pointer" <?= strpos($current_selector, 'img') !== false ? 'checked' : '' ?>>
+                                        <span class="text-sm text-slate-200">📸 Imagens</span>
+                                    </label>
+                                    
+                                    <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
+                                        <input type="checkbox" value="video" class="w-4 h-4 text-emerald-500 bg-slate-800 border-slate-600 rounded cursor-pointer" <?= strpos($current_selector, 'video') !== false ? 'checked' : '' ?>>
+                                        <span class="text-sm text-slate-200">🎬 Vídeos (HTML5)</span>
+                                    </label>
+                                    
+                                    <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
+                                        <input type="checkbox" value="iframe" class="w-4 h-4 text-emerald-500 bg-slate-800 border-slate-600 rounded cursor-pointer" <?= strpos($current_selector, 'iframe') !== false ? 'checked' : '' ?>>
+                                        <span class="text-sm text-slate-200">🌐 iFrames (Youtube, Vimeo)</span>
+                                    </label>
+
+                                    <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
+                                        <input type="checkbox" value="[data-front18=&quot;locked&quot;]" class="w-4 h-4 text-emerald-500 bg-slate-800 border-slate-600 rounded cursor-pointer" <?= strpos($current_selector, '[data-front18="locked"]') !== false ? 'checked' : '' ?>>
+                                        <span class="text-[11px] text-slate-200 leading-tight">🔒 Tag Oculta (Avançado)</span>
+                                    </label>
+                                </div>
+                                <p class="text-[10px] text-slate-500 mt-1 mb-3">Marque com "Check" o que deseja borrar. Desmarcar todos fará as portas escancarar.</p>
+
+                                <details class="text-sm">
+                                    <summary class="text-xs text-primary-400 cursor-pointer mb-2">Engenheiro / Desenvolvedor (Seletor Personalizado)</summary>
+                                    <input type="text" id="custom_blur_input" class="w-full bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500 font-mono text-xs" 
+                                           placeholder="Ex: .exclusivo-vip, section#gallery" value="<?= strpos($current_selector, '.') !== false || strpos($current_selector, '#') !== false ? htmlspecialchars($current_selector) : '' ?>">
+                                    <p class="text-[9px] text-slate-500 mt-1">Isso sobrescreve ou soma-se aos checkboxes.</p>
+                                </details>
+
+                                <input type="hidden" id="blur_selector_input" name="blur_selector" value="<?= htmlspecialchars($current_selector) ?>">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="glass-panel p-6 rounded-2xl">
                         <h4 class="font-black text-white text-lg mb-1 flex items-center gap-2"><span class="bg-primary-500 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs">2</span> Força da Catraca Jurídica</h4>
                         <p class="text-[11px] text-slate-400 mb-6 pb-4 border-b border-slate-800">Uma vez que a barreira é ativada (seja global ou clicando no Teaser), qual será o design e o isolamento processual do Front18?</p>
@@ -1012,12 +1085,27 @@ $myOrigins = $myOrigins ?? [];
                 </form>
 
                 <div class="pt-6 border-t border-slate-800 mt-6 flex justify-end">
-                    <button type="button" onclick="document.getElementById('frmSettings').dispatchEvent(new Event('submit'))" id="btnSaveConfig" class="w-full md:w-auto bg-primary-600 hover:bg-primary-500 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(99,102,241,0.2)] hover:shadow-[0_4px_20px_rgba(99,102,241,0.4)] transition-all flex items-center justify-center gap-2 uppercase tracking-wide">
+                    <button type="button" onclick="document.getElementById('frmSettings').requestSubmit();" id="btnSaveConfig" class="w-full md:w-auto bg-primary-600 hover:bg-primary-500 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(99,102,241,0.2)] hover:shadow-[0_4px_20px_rgba(99,102,241,0.4)] transition-all flex items-center justify-center gap-2 uppercase tracking-wide">
                         <i class="ph-bold ph-cloud-arrow-up text-lg"></i> <span>Salvar Configurações WAF</span>
                     </button>
                     
                     <script>
+                    function compileBlurSelector() {
+                        const checks = document.querySelectorAll('#blur_checkbox_group input[type="checkbox"]:checked');
+                        let selectors = Array.from(checks).map(el => el.value);
+                        
+                        const custom = document.getElementById('custom_blur_input')?.value.trim();
+                        if (custom && custom.length > 0) {
+                            selectors.push(custom);
+                        }
+                        
+                        document.getElementById('blur_selector_input').value = selectors.join(', ');
+                    }
+
                     function syncEdgeConfig(form) {
+                        // Antes de submeter, unificamos os checkboxes do Blur!
+                        compileBlurSelector();
+
                         const btn = document.getElementById('btnSaveConfig');
                         const originalHTML = btn.innerHTML;
                         btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i> <span>Propagando na Edge Network...</span>';

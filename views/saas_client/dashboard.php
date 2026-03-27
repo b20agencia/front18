@@ -1892,19 +1892,27 @@ $myOrigins = $myOrigins ?? [];
                     </div>
 
                     <!-- Controle de Escopo -->
+                    <?php if (($config['display_mode'] ?? 'global_lock') === 'blur_media'): ?>
+                    <div class="glass-panel p-6 rounded-2xl border border-emerald-500/30 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-r from-emerald-900/10 to-transparent pointer-events-none"></div>
+                        <h4 class="font-bold text-emerald-400 mb-2 flex items-center gap-2"><i class="ph-fill ph-check-circle text-xl"></i> Escopo Automático Ativado (Modo Blur)</h4>
+                        <p class="text-sm text-slate-300 leading-relaxed mb-4">Seu portal está utilizando o módulo <strong>Media Teaser (Blur Dinâmico)</strong>. Neste modo, não é necessário mapear páginas ou categorias. O motor Javascript do Front18 vasculha automaticamente qualquer rota do seu WordPress para caçar as imagens selecionadas na <strong>Matriz Granular</strong>.</p>
+                        <p class="text-xs text-slate-500 italic">O escudo será injetado automaticamente pelo plugin WP em todas indexações, blindando inclusive sidebars e footers.</p>
+                        <!-- Inputs ocultos para manter compatibilidade e o form salvar sem erros -->
+                        <input type="hidden" name="wp_home" value="1">
+                        <input type="hidden" name="wp_cpts[]" value="post">
+                        <input type="hidden" name="wp_cpts[]" value="page">
+                    </div>
+                    <?php else: ?>
                     <div class="glass-panel p-6 rounded-2xl border border-slate-800">
-                        <div class="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                            <h5 class="font-bold text-amber-400 text-sm mb-1"><i class="ph-bold ph-warning"></i> Atenção: Isso não escolhe entre "Tapa Tudo" vs "Blur Inteligente"!</h5>
-                            <p class="text-xs text-slate-400 leading-relaxed">Este Bloco define apenas <strong>ONDE</strong> o plugin vai rodar (Ex: Pagina inicial). Para alterar <strong>COMO</strong> o site será protegido (A tela preta vs Borrar Imagens Mídia Inteligente), você deve ir na outra Aba: <strong>"Painel de Blindagem > Setup Legal"</strong> e escolher "Media Teaser".</p>
-                        </div>
-                        
-                        <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-crosshair text-indigo-400"></i> Onde o WAF será ligado (Escopo)</h4>
+                        <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-crosshair text-indigo-400"></i> Onde o WAF Tela Preta será ativado</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-6 pb-4 border-b border-slate-800/50">Você está rodando sob a Blindagem por Modal Intransponível (Tapa Tudo). Marque abaixo quais terrenos de seu domínio deverão cobrar o passaporte. Outras páginas não marcadas passarão livres.</p>
                         
                         <div class="space-y-4">
                             <!-- Global -->
                             <div class="flex items-center justify-between p-4 bg-slate-950 rounded-xl border <?= $wpGlobal ? 'border-blue-500/50 bg-blue-900/10' : 'border-slate-800' ?> transition hover:border-slate-700">
                                 <div>
-                                    <h5 class="font-bold text-sm text-slate-200">Requerer Proteção no Site Inteiro</h5>
+                                    <h5 class="font-bold text-sm text-slate-200">Bloquear o Site Inteiro</h5>
                                     <p class="text-[10px] text-slate-500 mt-1">Se ativo, qualquer rota ou query de post passará pelo WAF de idade do Front18. Ideal se 100% de seu conteúdo é adulto.</p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
@@ -1917,8 +1925,8 @@ $myOrigins = $myOrigins ?? [];
                                 <!-- Home -->
                                 <div class="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800 transition hover:border-slate-700">
                                     <div>
-                                        <h5 class="font-bold text-sm text-slate-200">Proteger Apenas a Página Inicial (Root)</h5>
-                                        <p class="text-[10px] text-slate-500 mt-1">Se desejar restringir apenas o portal de entrada, os links diretos para posts passarão livre.</p>
+                                        <h5 class="font-bold text-sm text-slate-200">Trancar Apenas a Página Inicial (Root)</h5>
+                                        <p class="text-[10px] text-slate-500 mt-1">O portal de entrada ficará suprimido pelo Modal. Links diretos para posts passarão livre.</p>
                                     </div>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                       <input type="checkbox" name="wp_home" value="1" <?= $wpHome ? 'checked' : '' ?> class="sr-only peer">
@@ -1928,7 +1936,7 @@ $myOrigins = $myOrigins ?? [];
 
                                 <!-- CPTs -->
                                 <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 transition hover:border-slate-700">
-                                    <h5 class="font-bold text-sm text-slate-200 mb-3">Ativar Proteção Inteligente em Tipos de Postagens (CPTs)</h5>
+                                    <h5 class="font-bold text-sm text-slate-200 mb-3">Trancar Tipos de Postagens Selecionados</h5>
                                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                         <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
                                             <input type="checkbox" name="wp_cpts[]" value="post" <?= in_array('post', $wpCpts) ? 'checked' : '' ?> class="rounded bg-slate-900 border-slate-700 text-blue-500">
@@ -1947,11 +1955,11 @@ $myOrigins = $myOrigins ?? [];
                                             Portfolio
                                         </label>
                                     </div>
-                                    <p class="text-[10px] text-slate-500 mt-3 border-t border-slate-800/50 pt-2">Marcando, todos os arquivos dessas categorias ganharão a barreira Front18 de forma assíncrona (injetando CSS Anti-Flickering).</p>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    <?php endif; ?>
 
                     <div class="pt-6 border-t border-slate-800 mt-6 flex justify-end">
                         <button type="submit" id="btnSaveWp" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(59,130,246,0.2)] hover:shadow-[0_4px_20px_rgba(59,130,246,0.4)] transition-all flex items-center justify-center gap-2 uppercase tracking-wide">

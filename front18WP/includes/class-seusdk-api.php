@@ -109,6 +109,47 @@ class Front18_API {
                 'url'   => $url
             );
         }
+
+        // Ghost Scanner V2.0: Scraper Direto de Banco de Dados (Bypassa Cloudflare e CSS Externo do Elementor)
+        if ( $page === 1 ) {
+            global $wpdb;
+            $ghost_media = array();
+            $ghost_dict  = get_option( 'front18_ghost_media_dict', array() );
+            
+            // Reúne todos os JSONs de páginas locais e opções de Temas (Customizer)
+            $elementor = $wpdb->get_col( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_elementor_data'" );
+            $themes    = $wpdb->get_col( "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE 'theme_mods_%'" );
+            
+            // Fusão Limpa da Estrutura do Site (Removendo escapes de JSON)
+            $big_string = stripslashes( implode( ' ', array_merge( $elementor, $themes ) ) );
+            
+            // Regex Cirúrgica: Extrai qualquer URL que pareça uma fotografia ou banner de estrutura de Layout Isolado
+            preg_match_all( '/(https?:\/\/[^"\',\\\\\}\{\s\(\)]+\.(?:png|jpg|jpeg|webp))/i', $big_string, $matches );
+            
+            if ( ! empty( $matches[1] ) ) {
+                $urls = array_unique( $matches[1] );
+                foreach ( $urls as $ghost_url ) {
+                    // Força a exposição de TODAS as mídias do layout. 
+                    // Mesmo que o WP conheça a imagem, o MimeType dela pode estar corrompido, escondendo-a do SaaS.
+                    $fake_id = abs( crc32( $ghost_url ) ); // ID seguro e único baseado no texto
+                    
+                    $ghost_dict[ $fake_id ] = $ghost_url;
+                    $ghost_media[] = array(
+                        'id'    => $fake_id,
+                        'title' => 'Ghost Tracker (Elementor/Background)',
+                        'url'   => $ghost_url
+                    );
+                }
+            }
+            
+            if ( ! empty( $ghost_media ) ) {
+                update_option( 'front18_ghost_media_dict', $ghost_dict );
+                // Insere os fantasmas no início da matriz do SaaS
+                $media = array_merge( $ghost_media, $media );
+                // Atualiza o contador de itens da Query para que o SaaS exiba o número aumentado
+                $query->found_posts += count( $ghost_media );
+            }
+        }
         
         $protected_ids = get_option( 'front18_protected_media_ids', array() );
 

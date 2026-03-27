@@ -187,7 +187,7 @@ if ($action === 'config') {
             'ai_estimation' => isset($clienteSaaS['age_estimation_active']) ? (int)$clienteSaaS['age_estimation_active'] : 0,
             'display_mode'  => $clienteSaaS['display_mode'] ?? 'global_lock',
             'blur_amount'   => isset($clienteSaaS['blur_amount']) ? (int)$clienteSaaS['blur_amount'] : 25,
-            'blur_selector' => !empty($clienteSaaS['blur_selector']) ? $clienteSaaS['blur_selector'] : 'img, video, iframe, [data-front18="locked"]',
+            'blur_selector' => !empty($clienteSaaS['blur_selector']) ? $clienteSaaS['blur_selector'] : 'img, video, iframe',
             'protected_media_ids' => !empty($clienteSaaS['protected_media_ids']) ? json_decode($clienteSaaS['protected_media_ids'], true) : [],
             'privacy_config' => !empty($clienteSaaS['privacy_config']) ? json_decode($clienteSaaS['privacy_config'], true) : null,
             'modal_config' => !empty($clienteSaaS['modal_config']) ? json_decode($clienteSaaS['modal_config'], true) : null

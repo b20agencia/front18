@@ -9,6 +9,24 @@ class Front18_Frontend {
         add_action( 'wp_head', array( $this, 'inject_sdk_loader' ), 1 );
         add_shortcode( 'front18', array( $this, 'render_shortcode' ) );
         add_shortcode( 'front18_lock', array( $this, 'render_lock_shortcode' ) );
+        add_filter( 'language_attributes', array( $this, 'inject_html_class' ), 99 );
+    }
+
+    public function inject_html_class( $attributes ) {
+        if ( ! $this->should_run() ) return $attributes;
+        
+        $synced_config = get_option( 'front18_synced_config', array() );
+        $display_mode  = !empty($synced_config['display_mode']) ? $synced_config['display_mode'] : 'global_lock';
+        
+        $payload = $attributes . ' class="front18-hide"';
+        
+        // Blindagem Nuclear Zero-Ms contra Plugins de Cache (WP Rocket/LiteSpeed CSS Defer)
+        // Se a página for MODO GLOBAL, o bloqueio injetado no HTML Root destrói a chance do Cache carregar a imagem primeiro.
+        if ( $display_mode !== 'granular' && $display_mode !== 'blur_media' ) {
+            $payload .= ' style="opacity: 0.01 !important; pointer-events: none !important;"';
+        }
+        
+        return $payload;
     }
 
     public function inject_anti_flicker() {
@@ -48,17 +66,17 @@ class Front18_Frontend {
             }
         }
         ?>
-        <!-- FRONT18: ANTI-FLICKER CORE -->
-        <style data-no-optimize="1" data-no-minify="1" data-cfasync="false">
+        <!-- FRONT18: ANTI-FLICKER EXTREMO (BLINDADO CONTRA MINIFICAÇÃO) -->
+        <style id="front18-antiflicker-css" data-rocket-exclude="true" data-no-optimize="1" data-no-minify="1" data-cfasync="false">
             /* Camada de Controle Flexível: Adaptável com base na configuração da Edge SaaS */
-            <?php if ($display_mode === 'blur_media'): ?>
+            <?php if ( $display_mode === 'granular' || $display_mode === 'blur_media' ): ?>
             html.front18-hide body { 
                 pointer-events: none !important; 
                 overflow-x: hidden !important; 
             }
             <?php echo $formatted_selectors; ?> { 
                 filter: blur(<?php echo $blur_amount; ?>px) grayscale(100%) !important;
-                opacity: 0.5 !important;
+                opacity: 0.01 !important; /* Desfoque total para as fotos selecionadas até o JS carregar as modais */
             }
             <?php else: ?>
             html.front18-hide { 
@@ -139,8 +157,40 @@ class Front18_Frontend {
 
                 // 2. Config Object Seguro (Com Contexto WP Completo para o Payload SaaS)
                 <?php $synced_rules = get_option('front18_synced_rules', array()); ?>
+                <?php
+                $protected_media = get_option( 'front18_protected_media_ids', array() );
+        
+                $protected_urls = array();
+                if ( is_array($protected_media) && !empty($protected_media) ) {
+                    foreach ($protected_media as $id) {
+                        $url = wp_get_attachment_url($id);
+                        
+                        // Ghost Dictionary Fallback: Se não achar na biblioteca do WP, procura na lista de fantasmas que rastreamos
+                        if (!$url) {
+                            $ghost_dict = get_option('front18_ghost_media_dict', array());
+                            $url = isset($ghost_dict[$id]) ? $ghost_dict[$id] : false;
+                        }
+
+                        if ($url) {
+                            $filename = basename($url);
+                            $name_only = pathinfo($filename, PATHINFO_FILENAME);
+                            // Remove sufixos padrão do WP (Ex: foto-1024x768 -> foto)
+                            $base_name = preg_replace('/-[0-9]+x[0-9]+$/', '', $name_only);
+                            $protected_urls[] = $base_name;
+                        }
+                    }
+                }
+                $protected_urls = array_values(array_unique($protected_urls));
+                ?>
+                // Front18 Shield Security Payload
                 window.Front18Config = Object.assign({}, window.Front18Config || {}, {
                     apiKey: '<?php echo esc_js($api_key); ?>',
+                    mode: '<?php echo esc_js($display_mode); ?>',
+                    preventScroll: true,
+                    whitelistRoutes: [],
+                    protectRoutes: ['*'],
+                    protected_media_ids: <?php echo wp_json_encode( is_array($protected_media) ? array_map('intval', $protected_media) : array() ); ?>,
+                    protectedMediaNames: <?php echo wp_json_encode( $protected_urls ); ?>,
                     env: 'wordpress',
                     wpContext: {
                         postId: <?php echo intval( ( is_singular() && get_post() ) ? get_post()->ID : 0 ); ?>,
@@ -253,6 +303,16 @@ class Front18_Frontend {
         if ( ! empty( $include_ids ) && $current_id > 0 ) {
             $include_arr = array_map( 'intval', explode( ',', $include_ids ) );
             if ( in_array( $current_id, $include_arr ) ) return true;
+        }
+
+        $synced_config = get_option('front18_synced_config', array());
+        $display_mode = sanitize_text_field( $synced_config['display_mode'] ?? 'global_lock' );
+        $protected_media = get_option( 'front18_protected_media_ids', array() );
+
+        // 1. FORÇAMENTO GLOBAL INTELIGENTE (Matriz Granular Ativa = Auto-Injeção em Todo Site)
+        // Se há imagens selecionadas na Matriz O SaaS EXIGE que o Shield cace-as em qualquer rota!
+        if ( !empty($protected_media) && $display_mode === 'blur_media' ) {
+            return true;
         }
 
         $synced_rules = get_option('front18_synced_rules', false);

@@ -679,19 +679,30 @@
                     cursor: pointer !important;
                 }
                 html.Front18-blur-active .Front18-smart-container-blurred > * {
-                    opacity: 0.05 !important; /* Ofusca textos mantendo geometria do layout */
-                    filter: blur(25px) grayscale(100%) !important;
                     pointer-events: none !important;
                     transition: all 0.3s ease !important;
                 }
-                html.Front18-blur-active .Front18-smart-container-blurred::before {
-                    content: "" !important;
+                html.Front18-blur-active .Front18-smart-container-blurred {
+                    position: relative !important;
+                    overflow: hidden !important;
+                    clip-path: inset(0px) !important;
+                }
+                /* Eleva inteligentemente todos os Textos e Botões pro Topo (Layer Astronômico) */
+                html.Front18-blur-active .Front18-smart-container-blurred > :not(.Front18-shield-overlay):not(.elementor-background-overlay):not(.elementor-motion-effects-layer):not(.e-con-inner) {
+                    position: relative !important;
+                    z-index: 999999 !important;
+                }
+                html.Front18-blur-active .Front18-shield-overlay {
                     display: block !important;
                     position: absolute !important;
                     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
                     width: 100% !important; height: 100% !important;
-                    z-index: 1000000 !important;
-                    background: #0f172a !important; /* Paredão Nível 0 contra Vazamentos Safari/Apple */
+                    z-index: 999998 !important; /* Extrapolação Extrema: Garantia de cobertura frontal (Teste de Estresse) */
+                    background: rgba(15, 23, 42, 0.85) !important;
+                    backdrop-filter: blur(25px) grayscale(40%) !important;
+                    -webkit-backdrop-filter: blur(25px) grayscale(40%) !important;
+                    pointer-events: none !important;
+                    border-radius: inherit !important;
                 }
                 
                 html.Front18-blur-active .Front18-media-wrapper-premium::before {
@@ -781,6 +792,9 @@
                     opacity: 0.8 !important; /* Mantém a mídia visível para gerar teaser */
                     filter: blur(25px) grayscale(40%) !important; 
                     transform: scale(1.1) !important; /* Previne bordas vazadas do blur */
+                    -webkit-user-drag: none !important; /* MATA GHOST DRAG NO CHROME */
+                    user-drag: none !important;
+                    user-select: none !important; /* MATA SELEÇÃO AZUL EM MÍDIAS/VÍDEOS */
                 }
             `;
 
@@ -823,30 +837,177 @@
                 
                 let rawMedias = [];
                 try {
-                    rawMedias = document.querySelectorAll(customSelectors.join(','));
+                    rawMedias = Array.from(document.querySelectorAll(customSelectors.join(',')));
                 } catch(e) {
-                    rawMedias = document.querySelectorAll('img, video, iframe, picture, source');
+                    rawMedias = Array.from(document.querySelectorAll('img, video, iframe, picture, source'));
+                }
+
+                // MATADORA DE CÓPIAS (Visão por Arquivo): Se o lojista subiu a mesma foto 2x com IDs diferentes, 
+                // o SDK bloqueadora via Regex de Nome de Arquivo (Ignorando os IDs do BD do WP!)
+                let nameRegexCache = [];
+                if (this.config.protectedMediaNames && this.config.protectedMediaNames.length > 0) {
+                    // Monta regex super restrito: barra, nome exato, sufixo WP opcional de resolução, extensão.
+                    nameRegexCache = this.config.protectedMediaNames.map(name => {
+                        // Faz escape seguro pro Regex e tolera TUDO que houver de sufixo entre o nome e a extensão (-scaled, -300x300, -edited)
+                        var sName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        // Permite resoluções do WordPress (-300x150), permite múltiplas extensões geradas por Cache (ex .jpg.webp), e não restringe espaços finais para abraçar perfeitamente (srcset="... 300w")
+                        return new RegExp('/' + sName + '(?:-[0-9]+x[0-9]+)?\\.(?:jpg|jpeg|png|webp|gif)', 'i');
+                    });
+
+                    document.querySelectorAll('img, source, picture').forEach(media => {
+                        let potentialSrcs = [
+                            media.src,
+                            media.currentSrc,
+                            media.getAttribute('data-src'),
+                            media.getAttribute('data-lazy-src'),
+                            media.getAttribute('data-lazy-srcset'),
+                            media.getAttribute('srcset'),
+                            media.getAttribute('src')
+                        ].filter(Boolean).join(' ');
+
+                        if (nameRegexCache.some(r => r.test(potentialSrcs))) {
+                            // Marca como explícito para quebrar a Regra de Exclusões (Permite blur mesmo se estiver dentro do Header/Footer)
+                            media.dataset.front18 = 'locked';
+                            if (!rawMedias.includes(media)) rawMedias.push(media);
+                        }
+                    });
+
+                    // VIDEOS E IFRAMES OBRIGATÓRIOS: Players externos (ex: Pandavideo/YouTube) não constam na Galeria do WP,
+                    // então eles nunca estarão na Matriz do SaaS. Trava cega obrigatória para todos!
+                    document.querySelectorAll('iframe, video').forEach(media => {
+                        if (!rawMedias.includes(media)) rawMedias.push(media);
+                    });
                 }
                 const exclusions = '#masthead, .site-header, header.main-header, header.elementor-location-header, footer, nav.site-navigation, aside.sidebar, .site-footer, [data-elementor-type="header"], [data-elementor-type="footer"], .elementor-location-header, .elementor-location-footer, .logo, .custom-logo';
 
+                // =========================================================================
+                // 1. SMART CONTAINERS (Banners e CTAs Dinâmicos do Elementor via ComputedStyle)
+                // =========================================================================
+                const baseSmartSelectors = '[data-front18="locked"], .front18-locked, .wp-block-cover, .elementor-widget-video';
+                const smartContainers = Array.from(document.querySelectorAll(baseSmartSelectors));
+
+                // Raio-x Extremo: vasculha cada minúcia dentro do Elementor 
+                const allSuspects = document.querySelectorAll('.elementor-element, .elementor-element div, .e-loop-item, [data-elementor-type], .wp-block-cover, .elementor-background-overlay, .elementor-motion-effects-layer, .e-con-inner, [style*="background-image"], [style*="background: url"]');
+                allSuspects.forEach(node => {
+                    let targetContainer = node;
+                    
+                    // Elementor Hacks: O backgound real fica em divs injetadas dentro do Banner
+                    if (node.classList.contains('elementor-background-overlay') || node.classList.contains('elementor-motion-effects-layer') || node.classList.contains('e-con-inner')) {
+                        let parent = node.closest('.elementor-element, .e-loop-item, .wp-block-cover');
+                        if (parent) targetContainer = parent; // Transfere a responsabilidade do Blur pro Elemento Pai!
+                    }
+
+                    if (!smartContainers.includes(targetContainer)) {
+                        // Varredura Profunda de Backgrounds: Checa o elemento principal, as Pseudo-Camadas e Data Attributes
+                        let bgBase = window.getComputedStyle(node).getPropertyValue('background-image') || '';
+                        let bgBefore = window.getComputedStyle(node, '::before').getPropertyValue('background-image') || '';
+                        let bgAfter = window.getComputedStyle(node, '::after').getPropertyValue('background-image') || '';
+                        let dataBg = node.getAttribute('data-bg') || node.getAttribute('data-background-image') || node.getAttribute('data-background') || '';
+                        
+                        let bg = bgBase + ' ' + bgBefore + ' ' + bgAfter + ' ' + dataBg;
+                        // Força decodificação de URL caso o WP tenha subido arquivos sensíveis com acentos/espaços (ex: image%203.png -> image 3.png)
+                        let bgDecoded = bg;
+                        try { bgDecoded = decodeURIComponent(bg); } catch (e) {
+                            bgDecoded = bg.replace(/%20/g, ' ');
+                        }
+                        let bgLower = bgDecoded.toLowerCase();
+                        
+                        if (bg && bg !== 'none' && (bgLower.includes('url(') || bgLower.includes('.jpg') || bgLower.includes('.png') || bgLower.includes('.webp') || bgLower.includes('.jpeg'))) {
+                            if (nameRegexCache && nameRegexCache.length > 0) {
+                                // Double-check: avalia o codificado e descodificado (Blindagem para 100% de Edge Cases do Chrome CSSOM)
+                                let isProtected = nameRegexCache.some(r => r.test(bg) || r.test(bgDecoded));
+                                if (isProtected) {
+                                    // Matriz de Privilégio: Se a foto foi marcada no SaaS, ela quebra as proteções de Header/Footer globais
+                                    targetContainer.dataset.front18 = 'locked';
+                                    smartContainers.push(targetContainer);
+                                }
+                            } else if (!this.config.protected_media_ids || this.config.protected_media_ids.length === 0) {
+                                smartContainers.push(targetContainer);
+                            }
+                        }
+                    }
+                });
+
+                smartContainers.forEach(container => {
+                    const isExplicit = (container.dataset && container.dataset.front18 === 'locked') || container.classList.contains('front18-locked');
+
+                    const tagName = container.tagName.toUpperCase();
+                    
+                    // Delega a blindagem de mídias puras (Void Elements) exclusivamente ao processador nativo (rawMedias). 
+                    // Tentar injetar nós filhos (`<div class="shield">`) dentro de `<img/video>` causa falha/aberração de DOM.
+                    if (['IMG', 'VIDEO', 'IFRAME', 'PICTURE', 'SOURCE'].includes(tagName)) return;
+
+                    const structIds = /^(page|wrapper|content|site-content|main|app|root)$/i;
+                    const structClasses = /\b(site-wrapper|page-wrapper|main-content)\b/i;
+
+                    if (!isExplicit) {
+                        if (tagName === 'BODY' || tagName === 'HTML' || tagName === 'MAIN') return;
+                        if (container.id && structIds.test(container.id)) return;
+                        if (container.className && typeof container.className === 'string' && structClasses.test(container.className)) return;
+                    }
+
+                    // Ignora overlay do modal estrutural
+                    if (!container.closest('#Front18-overlay') && !container.closest('#Front18-privacy-banner')) {
+                        
+                        // Respeita exclusões de headers globais (Menus/Logos)
+                        if (!isExplicit && container.closest(exclusions)) {
+                            // AUTOMAÇÃO CLIENT-FREE: Banners de Capa de Post e CTAs frequentemente são montados dentro do Header/Footer pelo theme builder.
+                            // Diferenciação matemática: Se tiver Background Image e a altura > 120px, NÃO É MENU! É Banner/CTA.
+                            let bgBase = window.getComputedStyle(container).getPropertyValue('background-image') || '';
+                            let isGiantBanner = bgBase.includes('url(') && container.clientHeight > 120;
+                            let isLoop = container.closest('.e-loop-item');
+                            
+                            // Se for pequeno e não for Loop, ele é de fato um pedaço do menu (inofensivo). Pula!
+                            if (!isGiantBanner && !isLoop) return;
+                        }
+
+                        // Anti-Cebola: Se o pai direto já vai ser Blurado sob class .Front18-smart-container-blurred, pula
+                        if (container.parentElement && container.parentElement.closest('.Front18-smart-container-blurred')) return;
+
+                        if (!container.classList.contains('Front18-smart-container-blurred') && !container.classList.contains('Front18-media-blurred')) {
+                            container.classList.add('Front18-smart-container-blurred');
+
+                            // Elementor Conflito: Injeta o Shield nativamente para não subscrever o CSS ::before do construtor
+                            if (!container.querySelector(':scope > .Front18-shield-overlay')) {
+                                let shield = document.createElement('div');
+                                shield.className = 'Front18-shield-overlay';
+                                // Inserimos como o PRIMEIRO FILHO. Fica colado fisicamente atrás dos textos e botões!
+                                container.insertBefore(shield, container.firstChild);
+                            }
+
+                            // Estilo estrutural básico para o Backdrop Filter funcionar bem
+                            container.style.setProperty('cursor', 'pointer', 'important');
+                            container.addEventListener('click', openModal);
+                        }
+                    }
+                });
+
+                // =========================================================================
+                // 2. MÍDIAS NATIVAS (Tags <IMG>, <VIDEO>, <IFRAME>)
+                // =========================================================================
                 rawMedias.forEach(media => {
-                    // Ignora se estiver no modal de dpo/padrao, e ignora top-level site headers/footers
-                    if (!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner') && !media.closest(exclusions)) {
+                    const isExplicitMedia = (media.dataset && media.dataset.front18 === 'locked') || media.classList.contains('front18-locked');
+                    let inExclusion = media.closest(exclusions);
+                    let isGiantMedia = media.tagName !== 'IMG' || (media.clientHeight > 120); // Logos no Header tem < 100px. CTAs > 120px.
+
+                    if (!media.closest('#Front18-overlay') && !media.closest('#Front18-privacy-banner') && (!inExclusion || isExplicitMedia || isGiantMedia)) {
+                        
+                        // IGNORÂNCIA INTELIGENTE: Pula se a imagem estiver dentro de um Banner que já foi Blurado
+                        if (media.closest('.Front18-smart-container-blurred')) return;
+                        
                         if (!media.classList.contains('Front18-media-blurred')) {
                             // Envelopamento CSS Grid apenas em tags restritas que não suportam pseudo-elementos
                             if (media.tagName.match(/^(IMG|VIDEO|IFRAME|PICTURE)$/i)) {
-                                // Ignora micro imagems/icones
                                 if (media.clientWidth > 0 && media.clientWidth < 80) return;
 
                                 if (!media.parentElement.classList.contains('Front18-media-wrapper-premium')) {
                                     const wrapper = document.createElement('div');
                                     wrapper.className = 'Front18-media-wrapper-premium';
 
-                                    // B2B Fix: Herança de Box-Model para Iframes e Videos que são fluidos (evita colapso pro canto esquerdo)
                                     if (media.tagName === 'IFRAME' || media.tagName === 'VIDEO') {
                                         wrapper.style.width = '100%';
                                         wrapper.style.height = '100%';
-                                        wrapper.style.display = 'grid'; // Grid é obrigatório para as Trações Locais do PremiumBadge
+                                        wrapper.style.display = 'grid';
                                     } else {
                                         if (media.classList.contains('w-full')) wrapper.classList.add('w-full');
                                         if (media.classList.contains('h-full')) wrapper.classList.add('h-full');
@@ -861,9 +1022,9 @@
                             }
 
                             media.classList.add('Front18-media-blurred');
+                            media.setAttribute('draggable', 'false');
 
                             if (media.tagName === 'VIDEO') {
-                                // Trava rígida contra AutoPlay e Controls nativos
                                 media.pause();
                                 media.dataset.agControls = media.hasAttribute('controls') ? 'true' : 'false';
                                 media.removeAttribute('controls');
@@ -874,7 +1035,6 @@
                                 });
                                 media.addEventListener('click', openModal);
                             } else if (media.tagName === 'IFRAME') {
-                                // Iframes engolem cliques. Desativamos eventos neles para o parent capturar.
                                 media.classList.add('Front18-iframe-shielded');
                                 media.style.pointerEvents = 'none';
                                 if (media.parentElement) {
@@ -891,11 +1051,24 @@
                     }
                 });
 
-                // Failsafe Brutal Contra Stylesheets Assíncronos:
-                // Varre o DOM em 4 momentos no arranque, pois folhas de estilo remotas não disparam MutationObserver!
+                // =========================================================================
+                // 3. FAILSAFE CONTÍNUO (Combate ao Lazy Load e Requisições AJAX / Infinite Scroll)
+                // =========================================================================
                 if (!this._failsafeSweep) {
                     this._failsafeSweep = true;
-                    [150, 500, 1200, 2500].forEach(delay => {
+                    // Mantém uma varredura levíssima (idempotente) a cada 1.5s enquanto o bloqueio estiver ativo.
+                    // Isso derruba Táticas de Lazy Load do Elementor (e-lazyloaded) e Infinite Scrolls!
+                    let lazyGuard = setInterval(() => {
+                        if (document.documentElement.classList.contains('Front18-blur-active')) {
+                            this.blurMediaInstead();
+                        } else {
+                            clearInterval(lazyGuard);
+                            this._failsafeSweep = false;
+                        }
+                    }, 1200);
+
+                    // Reforço ultra-rápido no arranque inicial da DOM
+                    [150, 400, 800].forEach(delay => {
                         setTimeout(() => {
                             if (document.documentElement.classList.contains('Front18-blur-active')) {
                                 this.blurMediaInstead();
@@ -904,54 +1077,11 @@
                     });
                 }
 
-                // 2. Elementos Estruturais Modernos (Smart Blur Baseado Em Backdrop + Badge)
-                const smartContainers = Array.from(document.querySelectorAll('[data-front18="locked"], [data-elementor-type="loop-item"], .wp-block-cover, .elementor-background-overlay, [style*="background-image"], [style*="background: url"], .elementor-widget-theme-post-featured-image, .elementor-widget-video'));
-
-                const suspects = document.querySelectorAll('.e-parent[data-settings*="background_background"], .elementor-section[data-settings*="background_background"]');
-                suspects.forEach(container => {
-                    if (!smartContainers.includes(container)) {
-                        let bg = window.getComputedStyle(container).getPropertyValue('background-image');
-                        // Matadora de Charadas: Essa Div injetou uma fotografia de plano de fundo real via CSS? Tranque!
-                        if (bg && bg !== 'none' && bg.includes('url(')) {
-                            smartContainers.push(container);
-                        }
-                    }
-                });
-
-                smartContainers.forEach(container => {
-                    const isExplicit = container.dataset && container.dataset.front18 === 'locked';
-
-                    // Failsafe Crítico: Nunca transformar tag BODY ou HTML inteira do cliente num block Blur-media.
-                    // Isso impedia o site de funcionar corretamente e chamava o popup em qualquer lugar (falso Global Lock).
-                    const tagName = container.tagName.toUpperCase();
-                    const structIds = /^(page|wrapper|content|site-content|main|app|root)$/i;
-                    const structClasses = /\b(site-wrapper|page-wrapper|main-content)\b/i;
-
-                    if (!isExplicit) {
-                        if (tagName === 'BODY' || tagName === 'HTML' || tagName === 'MAIN') return;
-                        if (container.id && structIds.test(container.id)) return;
-                        if (container.className && typeof container.className === 'string' && structClasses.test(container.className)) return;
-                    }
-
-                    // Ignora overlay do modal
-                    if (!container.closest('#Front18-overlay') && !container.closest('#Front18-privacy-banner')) {
-                        // Se não for explicitamente lockado manualmente, proteja headers/footers estruturais do Elementor
-                        if (!isExplicit && container.closest(exclusions)) return;
-
-                        if (!container.classList.contains('Front18-smart-container-blurred')) {
-                            container.classList.add('Front18-smart-container-blurred');
-
-                            // Mantém a imagem, mas borra o próprio container!
-                            container.style.setProperty('filter', 'blur(25px) grayscale(40%)', 'important');
-                            container.style.setProperty('opacity', '0.8', 'important');
-                            container.style.setProperty('cursor', 'pointer', 'important');
-                            container.style.setProperty('transform', 'scale(1.05)', 'important'); /* Esconde bordas do blur */
-                            container.addEventListener('click', openModal);
-                        }
-                    }
-                });
-                // Libera a tela apenas DEPOIS que todas as estruturas foram bloqueadas!
-                this.releaseWPShield();
+                // Libera a tela de load apenas DEPOIS do primeiro High-Frequency Sweep (200ms) bater.
+                // Isso impede o Micro-Flicker de 1 milissegundo de CSS assíncrono (ex: Elementor Backgrounds).
+                setTimeout(() => {
+                    this.releaseWPShield();
+                }, 200);
 
             }, 50);
         },
@@ -2193,9 +2323,6 @@
 
                 // Remove Obliteração Sledgehammer das classes Elementor e containers
                 document.querySelectorAll('.Front18-smart-container-blurred').forEach(el => {
-                    el.style.removeProperty('filter');
-                    el.style.removeProperty('opacity');
-                    el.style.removeProperty('transform');
                     el.style.removeProperty('cursor');
                     el.classList.remove('Front18-smart-container-blurred');
                 });
@@ -2210,6 +2337,7 @@
                     media.classList.remove('Front18-media-blurred');
                     media.style.removeProperty('filter');
                     media.style.filter = 'none'; // Libera explícito pro navegador
+                    media.removeAttribute('draggable');
 
                     if (media.tagName === 'VIDEO') {
                         if (media.dataset.agControls === 'true') {

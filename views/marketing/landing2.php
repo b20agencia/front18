@@ -295,8 +295,8 @@ try {
         </div>
         <div class="footer-col">
             <h4>Legal</h4>
-            <a href="?route=privacy">Privacidade</a>
-            <a href="?route=terms">Termos</a>
+            <a href="?route=privacy&ref=landing2">Privacidade</a>
+            <a href="?route=terms&ref=landing2">Termos</a>
         </div>
     </div>
     <div class="footer-copy">

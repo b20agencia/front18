@@ -1,140 +1,232 @@
-<?php
-/**
- * Arquivo: privacy.php | UI da Política de Privacidade Transparente da Front18
- * @author Documentado por Gil Santos e Leandro Satt
- * @projeto Front18 Pro SaaS Architecture
- */
-// Front18 Pro - Política de Privacidade e Mapeamento de Cookies (LGPD/GDPR)
-?>
+<?php $ref = $_GET['ref'] ?? 'landing2'; ?>
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR">
 <head>
-    <link rel="icon" type="image/png" href="public/img/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy & Cookie Notice | Front18 Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: { primary: {"50":"#eff6ff","100":"#dbeafe","200":"#bfdbfe","300":"#93bffd","400":"#60a5fa","500":"#3b82f6","600":"#2563eb","700":"#1d4ed8","800":"#1e40af","900":"#1e3a8a","950":"#172554"} }
-                }
-            }
-        }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
-</head>
-<body class="bg-[#020617] text-slate-300 min-h-screen flex flex-col selection:bg-emerald-500/30">
-
-    <header class="h-20 border-b border-slate-800 flex items-center px-8 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-        <a href="?route=landing" class="flex items-center gap-3 group">
-            <div class="w-10 h-10 bg-gradient-to-br from-emerald-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-                <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-            </div>
-            <span class="text-xl font-black tracking-tight text-white">Front18<span class="text-emerald-500">.</span></span>
-        </a>
-        <div class="ml-auto flex gap-4">
-            <a href="?route=landing" class="text-sm font-bold text-slate-400 hover:text-white transition-colors">Retornar</a>
-        </div>
-    </header>
-
-    <main class="flex-1 max-w-4xl mx-auto w-full px-6 py-16 text-slate-300 leading-relaxed">
+    <title>Política de Privacidade — Front18 Protocolo de Conformidade</title>
+    <link rel="icon" type="image/png" href="/public/img/favicon.png">
+    <link rel="stylesheet" href="/public/css/new.css?v=<?= time() ?>">
+    <style>
+        body { background: var(--bg-canvas); }
+        .legal-container { max-width: 800px; margin: 120px auto 100px; padding: 50px 60px; background: var(--bg-surface); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 15px 50px rgba(0,0,0,0.5); }
+        .legal-header { text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 30px; margin-bottom: 30px; }
+        .legal-header h1 { font-size: 32px; font-weight: 800; margin-bottom: 10px; color: var(--text-main); }
+        .legal-header p { color: var(--text-muted); font-size: 14px; }
+        .legal-content h2 { font-size: 18px; font-weight: 700; color: var(--primary-accent); margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid rgba(0,221,128,0.15); display: flex; align-items: center; gap: 8px; }
+        .legal-content h2 span.num { background: rgba(0,221,128,0.1); color: var(--primary-accent); width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 12px; }
+        .legal-content p { color: #A0AEC0; font-size: 15px; margin-bottom: 16px; line-height: 1.8; }
+        .legal-content ul { margin-bottom: 20px; padding-left: 24px; }
+        .legal-content li { color: #A0AEC0; font-size: 15px; margin-bottom: 8px; line-height: 1.6; }
+        .legal-content li::marker { color: var(--primary-accent); }
         
-        <div class="mb-12">
-            <h1 class="text-4xl font-black text-white mb-4">Privacidade B2B e Injeção de Cookies</h1>
-            <p class="text-sm text-slate-500 font-mono uppercase tracking-widest border-b border-slate-800 pb-4">Nossa conformidade e compromisso com o seu usuário final</p>
+        /* Box Components */
+        .important-box { background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); padding: 20px; border-radius: 8px; margin: 24px 0; }
+        .important-box strong { color: var(--red); display: block; margin-bottom: 8px; font-size: 14px; }
+        .consent-box { background: rgba(0, 221, 128, 0.05); border: 1px solid rgba(0, 221, 128, 0.2); padding: 20px; border-radius: 8px; margin: 24px 0; }
+        .consent-box strong { color: var(--primary-accent); display: block; margin-bottom: 8px; font-size: 14px; }
+        
+        /* Table Formatting */
+        .legal-table { width: 100%; border-collapse: collapse; margin: 24px 0; background: rgba(255,255,255,0.02); border-radius: 8px; overflow: hidden; }
+        .legal-table th, .legal-table td { border: 1px solid rgba(255,255,255,0.1); padding: 14px 16px; text-align: left; font-size: 14px; }
+        .legal-table th { background: rgba(0,221,128,0.1); color: var(--primary-accent); font-weight: 700; white-space: nowrap; }
+        .legal-table td { color: #A0AEC0; }
+        
+        .legal-footer { margin-top: 50px; text-align: center; font-size: 13px; color: var(--dim); padding-top: 30px; border-top: 1px solid var(--border); }
+        .legal-footer a { color: var(--primary-accent); text-decoration: none; margin: 0 10px; }
+        .legal-footer a:hover { text-decoration: underline; }
+        @media(max-width: 768px) { .legal-container { padding: 30px 20px; margin: 100px 20px; } .legal-table { display: block; overflow-x: auto; } }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR BÁSICA LIMPADA PARA O DEPARTAMENTO LEGAL -->
+<nav class="nav">
+    <div class="nav-inner" style="justify-content: center;">
+        <div class="nav-brand">
+            <a href="?route=<?= htmlspecialchars($ref) ?>" style="display:flex; align-items:center;">
+                <img src="public/img/logo.png" alt="Front18 Logo" style="height: 24px; object-fit: contain;">
+                <span style="font-size:12px; font-weight:400; color:var(--muted); margin-left: 10px; border-left: 1px solid var(--border); padding-left: 10px;">Legal & Compliance Dept.</span>
+            </a>
         </div>
-
-        <section class="space-y-12">
-            <!-- Privacidade (Minimização) -->
-            <div>
-                <h2 class="text-xl font-bold text-white mb-3 text-emerald-400">1. A Cultura da Minimização de Dados</h2>
-                <p>Nossa fundação jurídica preza pela <strong>minimização (Data Minimization)</strong> estrita e cega. Ao contrário de provedores tradicionais de Analytics, o ecossistema Front18 <strong>não</strong> rastreia, perfila, desenha comportamentos mercadológicos ou processa atributos biográficos do seu visitante final (Titular de Dados). Nenhuma informação é trocada por enriquecimento de Ads em nossas bases.</p>
-                <div class="flex gap-4 mt-4 bg-slate-900 border border-slate-800 p-5 rounded-xl">
-                    <i class="ph-fill ph-fingerprint text-3xl text-slate-400 shrink-0"></i>
-                    <div>
-                        <h4 class="font-bold text-sm text-white mb-1">Cadeia de Hash Limitado (Telemetria Autenticada)</h4>
-                        <p class="text-[11px] text-slate-400 leading-tight">Os endereços IP e OS da ponta conectada são transmutados em "Assinaturas Hash Criptográficas" em curtos espaços de tempo. Eles existem puramente acobertados pela base legal do <em>Legítimo Interesse Produtivo e Proteção ao Patrimônio Digital</em>, necessários exclusivamente para justificar juridicamente o bloqueio (Firewall de Restrição Etária) e comprovar a Diligência de Barreira em caso de disputas legais contra o controlador.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Como processamos os Logs do Cliente -->
-            <div>
-                <h2 class="text-xl font-bold text-white mb-3 text-emerald-400">2. Destino e Duração da Custódia em Servidor</h2>
-                <p>O <em>Log Engine Forense</em> do nosso gateway é disponibilizado diretamente ao locatário SaaS na forma de "Dossiês em PDF Mensais". A custódia original atrelada e as listagens transientes da API do cliente ficam abrigadas em bancos de dados distribuídos rigidamente controlados. Devido à não-essencialidade da perpetuação, todos os logs brutos vinculáveis podem sofrer apagamento programado e irreversível da nuvem após expiração de suas tabelas de quarentena, exigindo o repasse da proteção à máquina local do cliente contratante.</p>
-            </div>
-
-            <!-- Aviso de Cookies Formal (LGPD / GDPR) -->
-            <div class="border-t border-slate-800 pt-12">
-                <i class="ph-fill ph-cookie text-4xl text-amber-500 mb-4 inline-block drop-shadow-lg"></i>
-                <h2 class="text-3xl font-black text-white mb-4">Aviso Oficial de Cookies e Armazenamento Oculto</h2>
-                
-                <p class="mb-4">Estejam avisados todos os clientes (Pessoas Jurídicas Administradoras do nosso Painel) e Visitantes (Acionadores do SDK em sites terceiros) do uso contínuo de matrizes locais (Local Storage, HTTP-Only Cookies) voltadas exclusivamente à segurança sistêmica.</p>
-
-                <div class="mt-6 border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/50">
-                    <table class="w-full text-left text-sm font-mono">
-                        <thead class="bg-slate-900">
-                            <tr>
-                                <th class="p-4 font-bold text-slate-300">Variável Local</th>
-                                <th class="p-4 font-bold text-slate-300">Mecanismo</th>
-                                <th class="p-4 font-bold text-slate-300">Tempo / Finalidade Justa</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-800">
-                            <tr class="hover:bg-slate-800/30">
-                                <td class="p-4 text-emerald-400 font-bold whitespace-nowrap">ag_srv_token</td>
-                                <td class="p-4 text-slate-500">Local Array</td>
-                                <td class="p-4 text-slate-400"><strong class="text-white">Estritamente Necessário (Sessão Backend).</strong> Armazena o Criptograma JWT do motor PHP para liberar o HTML criptografado sem re-avaliamentos (Zero-Trust Bypass Seguro). Expiração: Conforme configurado pelo Locatário B2B (1 Hora a 90 Dias).</td>
-                            </tr>
-                            <tr class="hover:bg-slate-800/30">
-                                <td class="p-4 text-emerald-400 font-bold whitespace-nowrap">Front18_verified_ux</td>
-                                <td class="p-4 text-slate-500">Local/Session Storage</td>
-                                <td class="p-4 text-slate-400"><strong class="text-white">Estritamente Necessário (UX Flow).</strong> Memoriza fluidamente uma aba para autorizar o Destranque do Blur/CSS Overlay lateral, poupando a máquina humana de retrabalho constante contra fadiga digital. Expiração: Client-Side.</td>
-                            </tr>
-                            <tr class="hover:bg-slate-800/30">
-                                <td class="p-4 text-emerald-400 font-bold whitespace-nowrap">PHPSESSID</td>
-                                <td class="p-4 text-slate-500">HttpOnly / Secure</td>
-                                <td class="p-4 text-slate-400"><strong class="text-white">Estritamente Necessário (Painel Root).</strong> Usado EXCLUSIVAMENTE para viabilizar login, autentificação, tokenização de conta Administradora SaaS e funções financeiras. Expira no logout ou timeout de navegação inativa.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="bg-emerald-500/10 border-l-4 border-emerald-500 p-6 rounded-r-xl mt-8">
-                <p class="text-emerald-200 text-sm">
-                    <strong>Zero-Consentimento Explícito Comercial Exigido:</strong> Todos os vetores de armazenamento supramencionados isentam-se da obrigatoriedade do banner intrusivo de "Opções de Tracking de Marketing" (Consent Management Platform - CMP), uma vez que se enquadram rigorosamente na diretriz de "Sistemas Estritamente Necessários Funcionais e de Segurança de Rede", fundamentais para blindar legalmente o Serviço Prestado e assegurar resquícios contratuais base entre Hospedeiro Digital e Front18 Pro.
-                </p>
-            </div>
-            
-            <p class="text-xs text-slate-500 text-center uppercase tracking-widest mt-10">O Data Protection Officer da Front18 pode ser acionado em vias eletrônicas fechadas para consultas extensivas de DPO.</p>
-
-        </section>
-
-    </main>
-
-    <!-- Cookie Micro-Banner B2B para o Site Próprio -->
-    <div id="selfCookieNotice" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 p-4 rounded-2xl shadow-2xl z-50 flex flex-col md:flex-row items-center gap-6 max-w-2xl w-[90%] md:w-full transition-transform translate-y-24 opacity-0 hidden">
-        <div class="flex-1">
-            <h4 class="font-bold text-white text-sm mb-1">Nosso App usa Cookies Funcionais Base</h4>
-            <p class="text-xs text-slate-400 leading-tight">Ao ingressar nas contas de Dashboard e Planos, nós travamos sua sessão localmente em navegadores corporativos por pura criptografia, sendo estritamente funcional à segurança.</p>
-        </div>
-        <button onclick="document.getElementById('selfCookieNotice').classList.add('translate-y-24', 'opacity-0'); setTimeout(()=>document.getElementById('selfCookieNotice').remove(), 300)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded-xl text-sm whitespace-nowrap transition-colors shadow-md">Compreendido</button>
     </div>
-    
-    <script>
-        // Fake little presentation of the banner when entering the page organically
-        setTimeout(() => {
-            const banner = document.getElementById('selfCookieNotice');
-            banner.classList.remove('hidden');
-            requestAnimationFrame(() => banner.classList.remove('translate-y-24', 'opacity-0'));
-        }, 1500);
-    </script>
+</nav>
 
+<div class="legal-container fade-in vis">
+    <div class="legal-header">
+        <h1>Política de Privacidade</h1>
+        <p>Última atualização: 23 de março de 2026</p>
+    </div>
+
+    <div class="legal-content">
+        <h2><span class="num">1</span> Identificação do Controlador (Art.9 III)</h2>
+        <p><strong>Controlador de Dados</strong><br>Razão Social Ltda<br>CNPJ: 00.000.000/0001-00<br>Site: https://meusite.com.br</p>
+        <p><strong>Encarregado de Dados (DPO) — Art.41</strong><br>Nome do Encarregado<br><span style="color:var(--primary-accent)">📧 dpo@seudominio.com.br</span><br>📞 (11) 0000-0000</p>
+
+        <h2><span class="num">2</span> Dados Pessoais que Coletamos (Art.9 I)</h2>
+        <p>O Meu Site coleta o mínimo de dados necessários para cumprir a Lei 15.211/2025 (proteção de crianças e adolescentes em ambientes digitais). Abaixo detalhamos cada dado:</p>
+        
+        <table class="legal-table">
+            <thead>
+                <tr>
+                    <th>Dado</th>
+                    <th>Finalidade</th>
+                    <th>Base Legal</th>
+                    <th>Retenção</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Endereço IP (hash)</td>
+                    <td>Segurança e anti-fraude</td>
+                    <td>Art.7 IX — Legítimo interesse</td>
+                    <td>Hash irreversível</td>
+                </tr>
+                <tr>
+                    <td>Foto de documento / Biometria</td>
+                    <td>Verificação de idade</td>
+                    <td>Art.11 I — Consentimento + Art.7 II — Obrigação legal</td>
+                    <td>Eliminada imediatamente</td>
+                </tr>
+                <tr>
+                    <td>Data de nascimento</td>
+                    <td>Cálculo de idade autônomo</td>
+                    <td>Art.7 II — Obrigação legal (Lei 15.211)</td>
+                    <td>Não armazenada</td>
+                </tr>
+                <tr>
+                    <td>Faixa etária</td>
+                    <td>Controle de acesso</td>
+                    <td>Dado anonimizado (Art.12)</td>
+                    <td>Duração da sessão</td>
+                </tr>
+                <tr>
+                    <td>Token de sessão criptográfica</td>
+                    <td>Manter estado da verificação</td>
+                    <td>Art.7 IX — Legítimo interesse</td>
+                    <td>Até 30 dias</td>
+                </tr>
+                <tr>
+                    <td>Dados de denúncia</td>
+                    <td>Canal de denúncias (Lei 15.211 Art.28)</td>
+                    <td>Art.7 II — Obrigação legal</td>
+                    <td>Conforme prazo legal</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="consent-box">
+            <strong style="display:flex;align-items:center;gap:6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Privacy by Design (Art.46 §2):</strong>
+            <p style="color:#cbd5e1; margin-bottom:0;">O sistema foi projetado desde a concepção para coletar o mínimo necessário. A foto do documento d biometria facial é processada exclusivamente em memória local e eliminada instantaneamente — nunca salva em disco ou rede externa. Apenas a matemática final de idade (ex: "18+") é retida sob Hash.</p>
+        </div>
+
+        <h2><span class="num">3</span> Finalidades do Tratamento (Art.6 I, Art.9 I)</h2>
+        <p>Os dados pessoais são tratados exclusivamente para:</p>
+        <ul>
+            <li><strong>Verificação de idade</strong> — Cumprimento da Lei 15.211/2025 (ECA), que obriga sites com conteúdo restrito a verificar a maturidade real dos usuários.</li>
+            <li><strong>Segurança</strong> — Prevenção de fraudes e ataques maliciosos (rate limiting, bloqueio de IPs em proxy/vpn agressivos).</li>
+            <li><strong>Auditoria e Canal de Denúncias</strong> — Geração de logs restritos para fins judiciais (Dec 12.880, Art.47).</li>
+        </ul>
+        
+        <div class="important-box">
+            <strong style="display:flex;align-items:center;gap:6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> O que NÃO fazemos:</strong>
+            <ul style="margin:0; color:#e2e8f0; font-size: 14px;">
+                <li>Não criamos perfis comportamentais de usuários.</li>
+                <li>Não compartilhamos dados com terceiros ou anunciantes.</li>
+                <li>Não realizamos rastreamento (cross-site tracking profiling).</li>
+                <li>Não armazenamos, não vendemos e não mantemos cópias fotográficas da sua identidade/biometria.</li>
+            </ul>
+        </div>
+
+        <h2><span class="num">4</span> Bases Legais para Tratamento (LGPD - Art.7)</h2>
+        <ul>
+            <li><strong>Obrigação legal (Art.7 II)</strong> — Verificação de idade conforme exigido pela Lei Federal 15.211/2025.</li>
+            <li><strong>Legítimo interesse (Art.7 IX)</strong> — Segurança estrutural do site e prova de cumprimento técnico judicial.</li>
+            <li><strong>Consentimento (Art.7 I / Art.11 I)</strong> — Para processamento sensível transitório, mediante consentimento expresso, específico e destacado de tela.</li>
+        </ul>
+
+        <h2><span class="num">5</span> Compartilhamento de Dados (Art.9 V)</h2>
+        <p>Seus poucos vestígios de dados estatísticos/Hashs jamais são compartilhados irrestritamente com terceiros, limitando-se unicamente a:</p>
+        <ul>
+            <li><strong>Obrigação legal</strong> — Quando forçados de forma transparente via mandato por autoridade judicial.</li>
+            <li><strong>Denúncias criminais</strong> — Comunicação explícita ao Conselho Nacional de Telecomunicações e/ou autoridade policial judiciária (Ex: Polícia Federal) em fraudes severas contra o sistema as a Service.</li>
+        </ul>
+
+        <h2><span class="num">6</span> Seus Direitos como Titular (Art.18)</h2>
+        <p>Você tem os seguintes direitos consolidados e assegurados em território brasileiro (LGPD):</p>
+        <ul style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            <li><strong>Confirmação</strong> e <strong>Acesso</strong></li>
+            <li><strong>Correção</strong> (incompletos/inexatos)</li>
+            <li><strong>Portabilidade</strong> (transferência segura)</li>
+            <li><strong>Informação</strong> e <strong>Revogação</strong> (Consentimento)</li>
+        </ul>
+        <div class="consent-box" style="padding:15px; margin-top:20px;">
+            <strong>Como exercer:</strong> Acesse nossa página de solicitações ou envie um e-mail para <span style="color:#fff">dpo@seudominio.com.br</span>. Responderemos em até 15 dias corridos (Art.19).
+        </div>
+
+        <h2><span class="num">7</span> Segurança da Informação (Art.46)</h2>
+        <p>Nosso projeto e a Engine <strong>Front18 Shield</strong> empregam arquitetura state-of-the-art contra vazamentos, incluindo criptografia SHA-256 irreversível (Salting), exclusão instantânea RAM de pixels, HTTP Strict Transport Security (HSTS) e CSP Restrito para blindar ataques de terceiros na borda.</p>
+
+        <h2><span class="num">8</span> Cookies e Semântica de Edge Device</h2>
+        <p>Diferente de sistemas de Ad-tech que implantam dezenas de rastreadores, nosso sistema é contido no navegador para finalidades restritas de Segurança e Legislação:</p>
+        <table class="legal-table">
+            <thead>
+                <tr>
+                    <th>Cookie</th>
+                    <th>Tipo</th>
+                    <th>Finalidade</th>
+                    <th>Duração</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>felca_session_f18</td>
+                    <td>Essencial</td>
+                    <td>Manter estado aprovatório do Age Gate +18</td>
+                    <td>Sessão / até 30 dias</td>
+                </tr>
+                <tr>
+                    <td>felca_consent</td>
+                    <td>Essencial</td>
+                    <td>Lembrar preferência LGPD Legal</td>
+                    <td>365 dias</td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="font-size:13px; color:var(--dim);">Cookies não essenciais (marketing, third-party) só disparam <strong>após</strong> você passar na verificação e conceder o banner LGPD explícito.</p>
+
+        <h2><span class="num">9</span> Proteção Fundamental ao Menor (LGPD Art.14)</h2>
+        <p>A natureza do nosso material web é de Classificação 18+. O mecanismo e o site barram o acesso, desligam scripts de rastreamento antes da aprovação legal da catraca e garantem a política estrita de desvinculação absoluta de perfilamento comportamental de menores detectados pelos logarítmos do Front18.</p>
+
+        <h2><span class="num">10</span> Retenção e Diluição Legal de Dados</h2>
+        <p>A IA do mecanismo destrói a representação imagética de sua biometria em menos de <strong style="color:#fff">0.9 segundos</strong>.</p>
+        <p>Os Hashs de sessão de provação caem automaticamente em 30 dias temporários. Os metadados de auditorias judiciais são guardados unicamente pelo prazo regulatório para eventuais contestações cíveis ou perante o Ministério Público do Brasil.</p>
+        
+        <h2><span class="num">11</span> Alterações e Contato</h2>
+        <p>Recomendamos a consulta periódica devido às adequações rápidas da Lei FELCA vigente de 2025/2026. Em caso de dúvidas complexas, a ANPD do governo federal está apta a dirimir impasses junto aos cidadãos via www.gov.br/anpd.</p>
+
+        <p style="margin-top:20px;"><strong>Contato imediato DPO:</strong></p>
+        <p style="font-weight:700; color:var(--primary-accent)">📧 dpo@seudominio.com.br</p>
+
+    </div>
+
+    <div class="legal-footer">
+        <p style="margin-bottom: 20px;">🛡️ Protegido pelo mecanismo Neural do <strong>Front18 Shield</strong> — Garantia Legal de Compliance de Dados.</p>
+        <div style="display:flex; justify-content:center; flex-wrap:wrap; gap: 10px;">
+            <a href="?route=privacy&ref=<?= htmlspecialchars($ref) ?>" style="color:#fff;font-weight:bold;">Política de Privacidade</a>
+            <span style="color:var(--border)">•</span>
+            <a href="?route=terms&ref=<?= htmlspecialchars($ref) ?>">Termos de Uso</a>
+            <span style="color:var(--border)">•</span>
+            <a href="?route=<?= htmlspecialchars($ref) ?>">Página Inicial (Voltar)</a>
+        </div>
+    </div>
+</div>
+
+<script>
+var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) { if (e.isIntersecting) e.target.classList.add('vis'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(function(el) { obs.observe(el); });
+</script>
 </body>
 </html>
-

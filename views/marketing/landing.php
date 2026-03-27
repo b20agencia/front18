@@ -424,7 +424,14 @@ try {
                         <li><a href="?route=login" style="color:var(--text-secondary); text-decoration:none; font-size:0.9rem;">Entrar no Dashboard</a></li>
                     </ul>
                 </div>
-            </div>
+                <div>
+                    <h4 style="color:#fff; font-size:0.8rem; font-family:var(--font-display); letter-spacing:0.1em; margin-bottom:1.25rem;">LEGAL</h4>
+                    <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0.75rem;">
+                        <li><a href="?route=terms&ref=landing" style="color:var(--text-secondary); text-decoration:none; font-size:0.9rem;">Termos de Uso</a></li>
+                        <li><a href="?route=privacy&ref=landing" style="color:var(--text-secondary); text-decoration:none; font-size:0.9rem;">Privacidade</a></li>
+                    </ul>
+                </div>
+             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; padding-top: 2rem; flex-wrap: wrap; gap: 1rem;">
                 <p style="font-size: 0.8rem; margin:0;">© 2026 Front18. Todos os direitos reservados. Motor Baseado na Arquitetura Front18 Pro.</p>

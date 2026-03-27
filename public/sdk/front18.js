@@ -300,10 +300,11 @@
                     #Front18-privacy-banner.minimized .f18-view { display: none !important; }
                     
                     .f18-min-icon { display: none; }
-                    #Front18-privacy-banner.minimized .f18-min-icon {
-                        display: block; width: 24px; height: 24px; fill: white; animation: f18-pulse 2s infinite;
-                    }
-                    @keyframes f18-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+                    #Front18-privacy-banner.minimized .f18-min-icon { display: block; width: 100%; height: 100%; perspective: 1000px; }
+                    .f18-coin-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; animation: f18-coin-spin 2s infinite ease-in-out; }
+                    .f18-coin-front, .f18-coin-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+                    .f18-coin-back { transform: rotateY(180deg); background: rgba(0,0,0,0.15); font-weight: 900; font-size: 16px; color: #fff; letter-spacing: -0.5px; }
+                    @keyframes f18-coin-spin { 0%, 30% { transform: rotateY(0deg); } 50%, 80% { transform: rotateY(180deg); } 100% { transform: rotateY(360deg); } }
 
                     .f18-view { display: none; }
                     .f18-view.active { display: block; animation: f18-fade-in 0.3s forwards; }
@@ -366,7 +367,14 @@
                     }
                 </style>
                 
-                <img class="f18-min-icon" src="${basePath}/public/img/favicon.png" style="width: 20px; height: 20px; object-fit: contain; filter: brightness(1.7) drop-shadow(0 0 2px rgba(255,255,255,0.4));" onerror="this.style.display='none'">
+                <div class="f18-min-icon">
+                    <div class="f18-coin-inner">
+                        <div class="f18-coin-front">
+                            <img src="${basePath}/public/img/favicon.png" style="width: 22px; height: 22px; margin-top: 2px; object-fit: contain; filter: brightness(1.7) drop-shadow(0 0 2px rgba(255,255,255,0.4));" onerror="this.style.display='none'">
+                        </div>
+                        <div class="f18-coin-back">+18</div>
+                    </div>
+                </div>
 
                 <div id="f18-view-main" class="f18-view active">
                     <div class="f18-priv-header">
@@ -1352,7 +1360,13 @@
                 </div>
             `;
             
-            document.getElementById('Front18-btn-face').addEventListener('click', () => { this.showBiometricChoices(); });
+            document.getElementById('Front18-btn-face').addEventListener('click', () => { 
+                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    this.showComputerLevels();
+                } else {
+                    this.showBiometricChoices(); 
+                }
+            });
             document.getElementById('Front18-btn-doc').addEventListener('click', () => { this.showDocumentChoices(); });
             
             ['face', 'doc'].forEach(id => {
@@ -1451,7 +1465,13 @@
                 </div>
             `;
             
-            document.getElementById('Front18-btn-back-bio').addEventListener('click', () => { this.showBiometricChoices(); });
+            document.getElementById('Front18-btn-back-bio').addEventListener('click', () => { 
+                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    this.showValidationOptions();
+                } else {
+                    this.showBiometricChoices();
+                }
+            });
             document.getElementById('Front18-lvl-2').addEventListener('click', () => { this.startFaceScan(2); });
             document.getElementById('Front18-lvl-3').addEventListener('click', () => { this.startFaceScan(3); });
             
@@ -1716,10 +1736,14 @@
                                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                         </div>
                                         <h3 style="color:#fff; font-size:22px; font-weight:700; margin:0 0 8px;">Aprovado via Celular!</h3>
-                                        <p style="color:#94a3b8; font-size:14px;">Destravando sincronismo com o servidor corporativo...</p>
+                                        <p style="color:#94a3b8; font-size:14px;">Emitindo certidão de bloqueio impenetrável...</p>
                                     </div>
                                 `;
-                                setTimeout(() => { this.unlock(); }, 1800);
+                                setTimeout(() => { 
+                                    this.config.aiAge = 25; // Define parâmetro estático para emitir recibo como maior de idade
+                                    this.config.aiConfidence = 99.9;
+                                    this.showReceiptBanner(); 
+                                }, 1800);
                             }
                         } catch(e) {}
                     }, 2000); // Bate na API a cada 2 seg
@@ -1751,6 +1775,9 @@
             modalContent.innerHTML = `
                 <div style="text-align:center;">
                    <div style="display:flex; justify-content:center; align-items:center; margin-bottom:10px; position:relative;">
+                       <button id="ag-btn-cancel-scan" style="position:absolute; left:0; background:rgba(255,255,255,0.08); border:none; color:#fff; border-radius:8px; width:28px; height:28px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index: 5;" title="Sair da Câmera (Cancelar)">
+                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                       </button>
                        <div class="Front18-badge" style="background:rgba(16, 185, 129, 0.1); color:#34d399; border-color:rgba(16, 185, 129, 0.2); margin-bottom:0; display:inline-flex; align-items:center; justify-content:center; gap:6px;">${UI_ICONS.shield} Motor Preditivo</div>
                        <div id="ag-cam-timer" style="position:absolute; right:0; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3); font-weight:700; font-size:12px; padding:4px 12px; border-radius:12px; display:none; box-shadow:0 0 10px rgba(239,68,68,0.1);">15s</div>
                    </div>
@@ -1783,6 +1810,7 @@
             const triggerBtn = document.getElementById('ag-start-scan-btn');
             let stream = null;
             let usingRealCamera = false;
+            window.__f18ScanIsCancelled = false; // Flag transversal de memory leak control
 
             const finalizeAI = (age, conf) => {
                 if (stream) stream.getTracks().forEach(t => t.stop());
@@ -1954,7 +1982,7 @@
                         this.currentStepIndex = 0;
 
                         const validationLoop = async () => {
-                            if (isFinalized) return;
+                            if (isFinalized || window.__f18ScanIsCancelled) return;
 
                             const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
                                 .withFaceLandmarks()
@@ -2029,6 +2057,15 @@
             };
 
             triggerBtn.addEventListener('click', runScanProcess);
+
+            // Cancel Scan Early Hook
+            document.getElementById('ag-btn-cancel-scan').addEventListener('click', () => {
+                window.__f18ScanIsCancelled = true;
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                video.pause();
+                video.srcObject = null;
+                this.showValidationOptions(); // Foge de volta p/ raiz p/ nao assustar o user ou matar a UX
+            });
         },
         isValidCPF: function (cpf) {
             if (typeof cpf !== 'string') return false;

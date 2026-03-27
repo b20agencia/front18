@@ -232,7 +232,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'btn_no' => htmlspecialchars($_POST['modal_btn_no'] ?? 'Sou menor de idade (Sair)'),
         'cam_shape' => htmlspecialchars($_POST['cam_shape'] ?? 'circle'),
         'cam_border_color' => preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['cam_border_color'] ?? '') ? $_POST['cam_border_color'] : '#6366f1',
-        'cam_glow' => isset($_POST['cam_glow']) ? true : false
+        'cam_glow' => isset($_POST['cam_glow']) ? true : false,
+        'modal_border_color' => preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['modal_border_color'] ?? '') ? $_POST['modal_border_color'] : ''
     ];
     $modalJson = json_encode($modalConfig);
     
@@ -1307,60 +1308,105 @@ $myOrigins = $myOrigins ?? [];
                     $camShape = $mConf['cam_shape'] ?? 'circle';
                     $camBorderColor = $mConf['cam_border_color'] ?? $config['color_primary'] ?? '#6366f1';
                     $camGlow = !empty($mConf['cam_glow']);
+                    $modalBorderColor = $mConf['modal_border_color'] ?? '';
                     ?>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                        <!-- Coluna 3: Textos do Modal -->
-                        <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10 w-full">
-                            <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-text-t text-purple-400"></i> Textos da Fechadura (Age Gate)</h4>
+                        <!-- Coluna 3 Esquerda Flex: Textos & Câmera -->
+                        <div class="flex flex-col gap-6">
                             
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Título de Bloqueio</label>
-                                    <input type="text" id="live_modal_title" name="modal_title" value="<?= htmlspecialchars($mTitle) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-mono">
-                                </div>
-                                
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Breve Descrição Legal</label>
-                                    <textarea id="live_modal_desc" name="modal_desc" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-mono"><?= htmlspecialchars($mDesc) ?></textarea>
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-4">
+                            <!-- Box: Textos do Modal -->
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10 w-full shadow-lg">
+                                <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-text-t text-purple-400"></i> Textura Escrita (Age Gate)</h4>
+                                <div class="space-y-4">
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 text-emerald-400">Botão Aceitar (Positivo)</label>
-                                        <input type="text" id="live_modal_btn_yes" name="modal_btn_yes" value="<?= htmlspecialchars($mYes) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all font-mono">
+                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Título de Bloqueio</label>
+                                        <input type="text" id="live_modal_title" name="modal_title" value="<?= htmlspecialchars($mTitle) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-mono">
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Botão Sair (Negativo)</label>
-                                        <input type="text" id="live_modal_btn_no" name="modal_btn_no" value="<?= htmlspecialchars($mNo) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-400 focus:outline-none focus:border-slate-500 transition-all font-mono">
+                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Breve Descrição Legal</label>
+                                        <textarea id="live_modal_desc" name="modal_desc" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-mono"><?= htmlspecialchars($mDesc) ?></textarea>
                                     </div>
-                                </div>
-
-                                <hr class="border-slate-800 my-8">
-                                <h5 class="text-sm font-bold text-white mb-5 flex items-center gap-2"><i class="ph-bold ph-camera text-primary-400"></i> Estilo da Câmera Inteligente</h5>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Formato (Shape)</label>
-                                        <select id="live_cam_shape" name="cam_shape" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-primary-500 transition-all font-mono">
-                                            <option value="circle" <?= $camShape === 'circle' ? 'selected' : '' ?>>Círculo Perfeito (SaaS)</option>
-                                            <option value="squircle" <?= $camShape === 'squircle' ? 'selected' : '' ?>>Quadrado Arredondado</option>
-                                            <option value="square" <?= $camShape === 'square' ? 'selected' : '' ?>>Quadrado Tradicional</option>
-                                            <option value="rectangle" <?= $camShape === 'rectangle' ? 'selected' : '' ?>>Retangular Landscape</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cor da Borda</label>
-                                        <div class="flex items-center gap-2 relative">
-                                            <input type="color" id="live_cam_border_color" name="cam_border_color" value="<?= htmlspecialchars($camBorderColor) ?>" class="absolute top-0 left-0 w-10 h-10 opacity-0 cursor-pointer" oninput="document.getElementById('live_cam_border_hex').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
-                                            <div id="live_cam_border_preview" class="w-12 h-10 rounded-lg border border-slate-700 pointer-events-none" style="background-color: <?= htmlspecialchars($camBorderColor) ?>;"></div>
-                                            <input type="text" id="live_cam_border_hex" value="<?= htmlspecialchars($camBorderColor) ?>" placeholder="#HEX" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-3 text-xs text-white uppercase focus:outline-none font-mono" oninput="document.getElementById('live_cam_border_color').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 text-emerald-400">Botão Positivo</label>
+                                            <input type="text" id="live_modal_btn_yes" name="modal_btn_yes" value="<?= htmlspecialchars($mYes) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all font-mono">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Botão Saída / Negativo</label>
+                                            <input type="text" id="live_modal_btn_no" name="modal_btn_no" value="<?= htmlspecialchars($mNo) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-400 focus:outline-none focus:border-slate-500 transition-all font-mono">
                                         </div>
                                     </div>
                                 </div>
-                                <label class="flex items-center gap-3 cursor-pointer mt-5 bg-slate-900/50 p-4 rounded-xl border border-slate-800 hover:border-primary-500/50 transition-colors">
-                                    <input type="checkbox" id="live_cam_glow" name="cam_glow" value="1" <?= $camGlow ? 'checked' : '' ?> class="w-4 h-4 text-primary-500 bg-slate-900 border-slate-700 rounded focus:ring-primary-500 outline-none">
-                                    <span class="text-xs text-slate-300 font-bold">Ativar Efeito de Brilho Dinâmico (Neon Glow) na IA</span>
-                                </label>
+                            </div>
+
+                            <!-- Box: Arquitetura, Lentes e Borda do Modal -->
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10 w-full shadow-lg">
+                                <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-camera text-primary-400"></i> Estrutura & Lentes Fotográficas</h4>
+                                
+                                <div class="space-y-5">
+                                    <!-- Câmera Shape Visual Selection -->
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Recorte Físico da Câmera (Avatar)</label>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            <label class="cursor-pointer group relative">
+                                                <input type="radio" name="cam_shape" value="circle" class="peer absolute opacity-0" <?= $camShape === 'circle' ? 'checked' : '' ?>>
+                                                <div class="p-3 border border-slate-700 rounded-xl bg-slate-900 peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
+                                                    <div class="w-10 h-10 rounded-full border-2 border-slate-600 peer-checked:border-primary-400"></div>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-primary-400">Sphere</span>
+                                                </div>
+                                            </label>
+                                            <label class="cursor-pointer group relative">
+                                                <input type="radio" name="cam_shape" value="squircle" class="peer absolute opacity-0" <?= $camShape === 'squircle' ? 'checked' : '' ?>>
+                                                <div class="p-3 border border-slate-700 rounded-xl bg-slate-900 peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
+                                                    <div class="w-10 h-10 rounded-[12px] border-2 border-slate-600 peer-checked:border-primary-400"></div>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-primary-400">Squircle</span>
+                                                </div>
+                                            </label>
+                                            <label class="cursor-pointer group relative">
+                                                <input type="radio" name="cam_shape" value="square" class="peer absolute opacity-0" <?= $camShape === 'square' ? 'checked' : '' ?>>
+                                                <div class="p-3 border border-slate-700 rounded-xl bg-slate-900 peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
+                                                    <div class="w-10 h-10 rounded-sm border-2 border-slate-600 peer-checked:border-primary-400"></div>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-primary-400">Reto</span>
+                                                </div>
+                                            </label>
+                                            <label class="cursor-pointer group relative">
+                                                <input type="radio" name="cam_shape" value="rectangle" class="peer absolute opacity-0" <?= $camShape === 'rectangle' ? 'checked' : '' ?>>
+                                                <div class="p-3 border border-slate-700 rounded-xl bg-slate-900 peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
+                                                    <div class="w-[45px] h-8 rounded-md border-2 border-slate-600 peer-checked:border-primary-400"></div>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-primary-400">Lands</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aro da Lente (Highlight)</label>
+                                            <div class="flex items-center gap-2 relative">
+                                                <input type="color" id="live_cam_border_color" name="cam_border_color" value="<?= htmlspecialchars($camBorderColor) ?>" class="absolute top-0 left-0 w-10 h-10 opacity-0 cursor-pointer" oninput="document.getElementById('live_cam_border_hex').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
+                                                <div id="live_cam_border_preview" class="w-10 h-10 rounded-lg border border-slate-700 pointer-events-none shrink-0" style="background-color: <?= htmlspecialchars($camBorderColor) ?>;"></div>
+                                                <input type="text" id="live_cam_border_hex" value="<?= htmlspecialchars($camBorderColor) ?>" placeholder="#HEX" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white uppercase focus:outline-none font-mono" oninput="document.getElementById('live_cam_border_color').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
+                                            </div>
+                                            <label class="flex items-center gap-2 cursor-pointer mt-3 bg-slate-900 px-2 py-1.5 rounded-lg border border-slate-800 hover:border-primary-500/50 transition-colors">
+                                                <input type="checkbox" id="live_cam_glow" name="cam_glow" value="1" <?= $camGlow ? 'checked' : '' ?> class="w-3 h-3 text-primary-500 rounded bg-slate-800">
+                                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Laser/Glow Emissor</span>
+                                            </label>
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Borda Externa Modal <span class="bg-indigo-500/20 text-indigo-400 px-1 py-0.5 rounded text-[8px]">New</span></label>
+                                            <div class="flex items-center gap-2 relative">
+                                                <input type="color" id="live_modal_border_color" name="modal_border_color" value="<?= htmlspecialchars($modalBorderColor ?: '#ffffff') ?>" class="absolute top-0 left-0 w-10 h-10 opacity-0 cursor-pointer" oninput="document.getElementById('live_modal_border_hex').value = this.value; document.getElementById('live_modal_border_preview').style.backgroundColor = this.value; if(this.value){document.getElementById('mock_modal').style.borderColor=this.value;}else{document.getElementById('mock_modal').style.borderColor='rgba(255,255,255,0.08)';}">
+                                                <div id="live_modal_border_preview" class="w-10 h-10 rounded-lg border border-slate-700 pointer-events-none shrink-0" style="background-color: <?= htmlspecialchars($modalBorderColor ?: 'transparent') ?>;">
+                                                    <?= !$modalBorderColor ? '<div class="w-full h-full flex items-center justify-center text-slate-500 text-xs"><i class="ph-bold ph-prohibit"></i></div>' : '' ?> 
+                                                </div>
+                                                <input type="text" id="live_modal_border_hex" value="<?= htmlspecialchars($modalBorderColor) ?>" placeholder="VAZIO = PADRÃO" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white uppercase focus:outline-none font-mono" oninput="document.getElementById('live_modal_border_color').value = this.value; document.getElementById('live_modal_border_preview').style.backgroundColor = this.value  || 'transparent'; if(this.value){document.getElementById('mock_modal').style.borderColor=this.value;}">
+                                            </div>
+                                            <p class="text-[9px] text-slate-500 mt-2 font-mono">Use cores neon (#FF00FF) para acoplar um portal gamer ou deixe vazio para borda glass nativa.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1370,7 +1416,8 @@ $myOrigins = $myOrigins ?? [];
                             <h4 class="absolute top-4 left-6 font-bold text-slate-400 text-xs uppercase tracking-widest flex items-center gap-2"><i class="ph-bold ph-eye"></i> Simulação na Tela do Cliente</h4>
                             
                             <!-- O Mock do Modal -->
-                            <div id="mock_modal" style="background: <?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?>; border: 1px solid rgba(255,255,255,0.08); color: <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?>;" class="relative z-10 p-[48px_40px] rounded-[24px] text-center w-full max-w-[460px] shadow-2xl scale-[0.75] origin-top transition-all mt-4 font-sans">
+                            <?php $tempMockBorder = $modalBorderColor ?: "rgba(255,255,255,0.08)"; ?>
+                            <div id="mock_modal" style="background: <?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?>; border: 2px solid <?= htmlspecialchars($tempMockBorder) ?>; color: <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?>;" class="relative z-10 p-[48px_40px] rounded-[24px] text-center w-full max-w-[460px] shadow-[0_0_40px_rgba(0,0,0,0.5)] scale-[0.75] origin-top transition-all mt-4 font-sans">
                                 <div id="mock_badge" style="background: color-mix(in srgb, <?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?> 15%, transparent); color: <?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?>; border: 1px solid color-mix(in srgb, <?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?> 30%, transparent);" class="inline-flex items-center justify-center px-[14px] py-[6px] rounded-[20px] text-[11px] font-bold tracking-[0.5px] uppercase mb-[24px]">
                                     <img src="/public/img/favicon.png" style="width:16px; height:16px; margin-right:6px; object-fit:contain; filter:brightness(2) drop-shadow(0 0 2px rgba(255,255,255,0.5));" onerror="this.style.display='none'">
                                     RESTRIÇÃO DE IDADE

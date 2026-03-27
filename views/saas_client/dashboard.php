@@ -128,8 +128,18 @@ $hasAntiScraping = (bool)$planDetails['has_anti_scraping'];
 
 // ======== WEHOOK SYNC HELPER ========
 function dispatchWordPressSync($pdo, $userId) {
+    // Auto-Heal: Tenta criar a coluna se ela não existir
+    try {
+        $pdo->exec("ALTER TABLE saas_origins ADD COLUMN protected_media_ids LONGTEXT NULL AFTER blur_selector");
+    } catch(PDOException $e) { /* Já existe ou outro erro tolerável */ }
+
     $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg, blur_amount, blur_selector, protected_media_ids, wp_rules, wp_url FROM saas_origins WHERE user_id = ? LIMIT 1");
-    $stmtOrigin->execute([$userId]);
+    try {
+        $stmtOrigin->execute([$userId]);
+    } catch(Exception $e) {
+        return ['status' => false, 'msg' => 'Falha DB na origem local: ' . $e->getMessage()];
+    }
+    
     $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
     
     if (empty($origin['wp_url']) || empty($origin['api_key'])) return ['status' => false, 'msg' => 'Sem URL do WP configurada.'];
@@ -318,14 +328,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $clean_ids = array_values(array_unique(array_filter(array_map('intval', $protected_ids))));
     $json_ids = json_encode($clean_ids);
     
-    $stmtUpd = $pdo->prepare("UPDATE saas_origins SET protected_media_ids = ? WHERE user_id = ?");
-    $stmtUpd->execute([$json_ids, $userId]);
+    try {
+        // Tenta auto-reparar
+        $pdo->exec("ALTER TABLE saas_origins ADD COLUMN protected_media_ids LONGTEXT NULL AFTER blur_selector");
+    } catch (PDOException $e) { }
     
-    // Dispara webhook pro cliente acoplar o CSS de Blur nessas TDs exatas
-    $sync = dispatchWordPressSync($pdo, $userId);
-    
-    header('Content-Type: application/json');
-    die(json_encode(['success' => true, 'total' => count($clean_ids), 'push_status' => $sync['status']]));
+    try {
+        $stmtUpd = $pdo->prepare("UPDATE saas_origins SET protected_media_ids = ? WHERE user_id = ?");
+        $stmtUpd->execute([$json_ids, $userId]);
+        
+        // Dispara webhook pro cliente acoplar o CSS de Blur nessas TDs exatas
+        $sync = dispatchWordPressSync($pdo, $userId);
+        
+        header('Content-Type: application/json');
+        die(json_encode(['success' => true, 'total' => count($clean_ids), 'push_status' => $sync['status']]));
+    } catch (Exception $e) {
+        header('Content-Type: application/json');
+        die(json_encode(['success' => false, 'error' => 'Falha interna do BD: ' . $e->getMessage()]));
+    }
 }
 
 if (!$config) {

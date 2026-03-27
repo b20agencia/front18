@@ -79,4 +79,46 @@ class Front18_API {
             'rules'     => $sanitized_rules 
         ) );
     }
+
+    public function get_media_library( WP_REST_Request $request ) {
+        $page     = $request->get_param( 'page' ) ? (int) $request->get_param( 'page' ) : 1;
+        $per_page = $request->get_param( 'per_page' ) ? (int) $request->get_param( 'per_page' ) : 48;
+        
+        $args = array(
+            'post_type'      => 'attachment',
+            'post_mime_type' => 'image',
+            'post_status'    => 'inherit',
+            'posts_per_page' => $per_page,
+            'paged'          => $page,
+            'orderby'        => 'date',
+            'order'          => 'DESC'
+        );
+        
+        $query = new WP_Query( $args );
+        $media = array();
+
+        foreach ( $query->posts as $post ) {
+            $url = wp_get_attachment_image_url( $post->ID, 'medium' );
+            if ( ! $url ) {
+                $url = wp_get_attachment_url( $post->ID );
+            }
+            
+            $media[] = array(
+                'id'    => $post->ID,
+                'title' => $post->post_title,
+                'url'   => $url
+            );
+        }
+        
+        $protected_ids = get_option( 'front18_protected_media_ids', array() );
+
+        return rest_ensure_response( array(
+            'success'       => true,
+            'total_items'   => $query->found_posts,
+            'total_pages'   => $query->max_num_pages,
+            'current_page'  => $page,
+            'protected_ids' => is_array($protected_ids) ? array_map('intval', $protected_ids) : array(),
+            'data'          => $media
+        ) );
+    }
 }

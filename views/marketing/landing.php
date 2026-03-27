@@ -111,6 +111,79 @@ try {
         </div>
     </section>
 
+    <!-- GSAP APPLE STICKY REVEAL PREMIUM -->
+    <section id="gsap-sticky-section" style="position: relative; padding: 100px 0; background: #000; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div class="container" style="text-align: center; margin-bottom: 20px;">
+            <h2 class="gsap-up" style="font-size: clamp(2rem, 4vw, 3rem); color: #fff; text-align: center;">Evolução Contínua em Ação</h2>
+            <p class="gsap-up" style="color: var(--text-secondary); max-width: 650px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6; text-align: center;">Navegue pelas tecnologias modulares de proteção do ecossistema Front18.</p>
+        </div>
+
+        <div class="container sticky-wrapper" style="display: flex; position: relative; gap: 40px; align-items: flex-start; margin-top: 80px;">
+            
+            <!-- Lado Esquerdo - Scrollers (Textos) -->
+            <div class="scr-text" style="width: 42%; padding-bottom: 50vh;">
+                <!-- Bloco 1 -->
+                <div class="st-item" data-index="0" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; opacity: 0.2; transition: opacity 0.5s ease-out;">
+                    <div style="font-size: 0.8rem; letter-spacing: 0.15em; color: var(--accent-red); margin-bottom: 10px; font-weight: 800;">MÓDULO 01</div>
+                    <h3 style="font-size: clamp(2rem, 3vw, 2.8rem); margin-bottom: 20px; color: #fff; line-height: 1.1;">Biometria Nativa</h3>
+                    <p style="font-size: 1.15rem; color: var(--text-secondary); line-height: 1.7;">Motor neural rodando sem delays ou latência de rede. Captura os micros-movimentos da face no milissegundo em que a câmera é apontada.</p>
+                </div>
+                <!-- Bloco 2 -->
+                <div class="st-item" data-index="1" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; opacity: 0.2; transition: opacity 0.5s ease-out;">
+                    <div style="font-size: 0.8rem; letter-spacing: 0.15em; color: var(--accent-red); margin-bottom: 10px; font-weight: 800;">MÓDULO 02</div>
+                    <h3 style="font-size: clamp(2rem, 3vw, 2.8rem); margin-bottom: 20px; color: #fff; line-height: 1.1;">OCR Forense</h3>
+                    <p style="font-size: 1.15rem; color: var(--text-secondary); line-height: 1.7;">Verificação cruzada inteligente: quando habilitada, escaneia CNH/RG por inteligência artificial para ler a data de nascimento real.</p>
+                </div>
+                <!-- Bloco 3 -->
+                <div class="st-item" data-index="2" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; opacity: 0.2; transition: opacity 0.5s ease-out;">
+                    <div style="font-size: 0.8rem; letter-spacing: 0.15em; color: var(--accent-red); margin-bottom: 10px; font-weight: 800;">MÓDULO 03</div>
+                    <h3 style="font-size: clamp(2rem, 3vw, 2.8rem); margin-bottom: 20px; color: #fff; line-height: 1.1;">Liveness (Prova de Vida)</h3>
+                    <p style="font-size: 1.15rem; color: var(--text-secondary); line-height: 1.7;">Não aceita fotos de celular nem máscaras de papel. Exige que o usuário comprove ser um ser humano em vida respirando e se movendo.</p>
+                </div>
+                <!-- Bloco 4 -->
+                <div class="st-item" data-index="3" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; opacity: 0.2; transition: opacity 0.5s ease-out;">
+                    <div style="font-size: 0.8rem; letter-spacing: 0.15em; color: var(--accent-red); margin-bottom: 10px; font-weight: 800;">MÓDULO 04</div>
+                    <h3 style="font-size: clamp(2rem, 3vw, 2.8rem); margin-bottom: 20px; color: #fff; line-height: 1.1;">Content Blur</h3>
+                    <p style="font-size: 1.15rem; color: var(--text-secondary); line-height: 1.7;">Camada restritiva individual nos itens da página. Deixa todas as vitrines ofuscadas garantindo anonimato seguro enquanto verifica.</p>
+                </div>
+                <!-- Bloco 5 -->
+                <div class="st-item" data-index="4" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; opacity: 0.2; transition: opacity 0.5s ease-out;">
+                    <div style="font-size: 0.8rem; letter-spacing: 0.15em; color: var(--accent-red); margin-bottom: 10px; font-weight: 800;">MÓDULO 05</div>
+                    <h3 style="font-size: clamp(2rem, 3vw, 2.8rem); margin-bottom: 20px; color: #fff; line-height: 1.1;">Logs de Auditoria</h3>
+                    <p style="font-size: 1.15rem; color: var(--text-secondary); line-height: 1.7;">Apresente relógios e fluxos selados aos auditores federais com a garantia que seu hub capturou apenas maiores de idade no mês inteirinho.</p>
+                </div>
+                <!-- Bloco 6 -->
+                <div class="st-item" data-index="5" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; opacity: 0.2; transition: opacity 0.5s ease-out;">
+                    <div style="font-size: 0.8rem; letter-spacing: 0.15em; color: var(--accent-red); margin-bottom: 10px; font-weight: 800;">MÓDULO 06</div>
+                    <h3 style="font-size: clamp(2rem, 3vw, 2.8rem); margin-bottom: 20px; color: #fff; line-height: 1.1;">Cookies Zero</h3>
+                    <p style="font-size: 1.15rem; color: var(--text-secondary); line-height: 1.7;">Sua LGPD não entra em colapso. Desenvolvemos o sistema sem dependência abusiva de rastreadores nem cookies invasivos nos terminais.</p>
+                </div>
+            </div>
+
+            <!-- Lado Direito - Pinned Visual (Imagens) -->
+            <div class="scr-visual" style="width: 58%; height: 100vh; position: sticky; top: 0; display: flex; align-items: center; justify-content: center;">
+                <div style="width: 100%; position: relative;">
+                    <!-- Empilhamento absoluto via alpha opacity -->
+                    <img class="st-img st-img-0" src="/public/img/image/card1.png" onerror="this.onerror=null; this.src='public/img/image/card1.png'; if(!this.complete)this.src='img/image/card1.png';" style="position: absolute; top:50%; left:0; transform: translateY(-50%) scale(0.9); width: 100%; border-radius: 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.6); opacity: 1; transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);" alt="Image">
+                    <img class="st-img st-img-1" src="/public/img/image/card2.png" onerror="this.onerror=null; this.src='public/img/image/card2.png'; if(!this.complete)this.src='img/image/card2.png';" style="position: absolute; top:50%; left:0; transform: translateY(-30%) scale(0.95); width: 100%; border-radius: 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.6); opacity: 0; transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);" alt="Image">
+                    <img class="st-img st-img-2" src="/public/img/image/card3.png" onerror="this.onerror=null; this.src='public/img/image/card3.png'; if(!this.complete)this.src='img/image/card3.png';" style="position: absolute; top:50%; left:0; transform: translateY(-30%) scale(0.95); width: 100%; border-radius: 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.6); opacity: 0; transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);" alt="Image">
+                    <img class="st-img st-img-3" src="/public/img/image/card4.png" onerror="this.onerror=null; this.src='public/img/image/card4.png'; if(!this.complete)this.src='img/image/card4.png';" style="position: absolute; top:50%; left:0; transform: translateY(-30%) scale(0.95); width: 100%; border-radius: 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.6); opacity: 0; transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);" alt="Image">
+                    <img class="st-img st-img-4" src="/public/img/image/card5.png" onerror="this.onerror=null; this.src='public/img/image/card5.png'; if(!this.complete)this.src='img/image/card5.png';" style="position: absolute; top:50%; left:0; transform: translateY(-30%) scale(0.95); width: 100%; border-radius: 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.6); opacity: 0; transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);" alt="Image">
+                    <img class="st-img st-img-5" src="/public/img/image/card6.png" onerror="this.onerror=null; this.src='public/img/image/card6.png'; if(!this.complete)this.src='img/image/card6.png';" style="position: absolute; top:50%; left:0; transform: translateY(-30%) scale(0.95); width: 100%; border-radius: 20px; box-shadow: 0 30px 60px rgba(0,0,0,0.6); opacity: 0; transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);" alt="Image">
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            @media (max-width: 900px) {
+                .sticky-wrapper { flex-direction: column-reverse; gap: 0 !important; }
+                .scr-visual { width: 100% !important; height: 50vh !important; position: sticky !important; top: 70px !important; z-index: 10; background: #000; padding: 20px 0; }
+                .scr-text { width: 100% !important; z-index: 5; }
+                .st-item { height: 60vh !important; }
+            }
+        </style>
+    </section>
+
     <section id="demo" style="border-top: 1px solid var(--border-color); padding: 80px 0;">
         <div class="container">
             <h2 class="gsap-up" style="text-align:center;">Veja as <span class="text-red">Duas Camadas</span> em Ação</h2>
@@ -443,6 +516,50 @@ try {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
     <script src="public/js/gsap-anim.js"></script>
+
+    <script>
+        gsap.registerPlugin(ScrollTrigger);
+
+        // STICKY REVEAL ANIMATION (APPLE/STRIPE STYLE)
+        const stItems = document.querySelectorAll('.st-item');
+        const stImages = document.querySelectorAll('.st-img');
+
+        stItems.forEach((item, i) => {
+            ScrollTrigger.create({
+                trigger: item,
+                start: "center center", 
+                end: "bottom center",
+                onEnter: () => activateCrossfade(i),
+                onEnterBack: () => activateCrossfade(i)
+            });
+        });
+
+        function activateCrossfade(activeIndex) {
+            // Opacidade do Texto
+            stItems.forEach((it, idx) => {
+                it.style.opacity = idx === activeIndex ? "1" : "0.2";
+            });
+
+            // Imagens In-Out Action
+            stImages.forEach((img, idx) => {
+                if (idx === activeIndex) {
+                    img.style.opacity = "1";
+                    img.style.transform = "translateY(-50%) scale(1)";
+                    img.style.zIndex = "2";
+                } else if (idx < activeIndex) {
+                    // Passou por ela (subindo a img)
+                    img.style.opacity = "0";
+                    img.style.transform = "translateY(-70%) scale(0.95)";
+                    img.style.zIndex = "1";
+                } else {
+                    // Ainda vai chegar (descendo a img)
+                    img.style.opacity = "0";
+                    img.style.transform = "translateY(-30%) scale(0.95)";
+                    img.style.zIndex = "1";
+                }
+            });
+        }
+    </script>
 </body>
 </html>
 

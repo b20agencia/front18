@@ -97,3 +97,35 @@ O objetivo final alcançado foi preparar a aplicação para a Escala Comercial p
 ✅ Câmera em estado de Privacidade Absoluta (Opt-in Button).
 ✅ Auto-Start Neural sem gargalo de percepção.
 ✅ Timeout Temporizado blindado.
+
+---
+
+## 6. Arquitetura Edge OCR: Extração de CNH/RG (Tesseract.js)
+
+**6.1 Arquitetura Modular (Lazy Loading)**
+- **O que foi feito:** Toda a infraestrutura massiva de processamento digital, manipulações de pixels e OCR Validation foi injetada num novo arquivo autônomo `front18-ocr.js`.
+- **Por quê:** O engine principal não poderia ser esmagado de banda. O novo sistema é carregado via `Promise` apenas se o cliente do site rejeitar a biometria facial e escolher fazer o OCR manual (levando a latência natural para próximo de Zero em navegação básica).
+
+**6.2 Overclock Resolutivo de Hardware Câmeras (4K/1080p)**
+- **O que foi feito:** O request `MediaDevices` abandonou o genérico passivo `{video: true}` e agora requisita constrains ferozes na Lente Traseira do SmartPhone/Webcam focando primeiramente na faixa extrema de `3840x2160` (com backup tolerante pra 1080p e 720p).
+- **Por quê:** O embaçamento das fontes finas do RG/CNH em resoluções default geram a falha universal do Tesseract. Entregar Quad-HD nativo garante matrizes de inferência com pixels perfeitos.
+
+**6.3 Remoção de Ilusão Ótica de Espelhos (CSS Anti-Inversor)**
+- **O que foi feito:** O `transform: scaleX(-1)` da folha local e os lógicos invertidos em Canvas de câmera OCR foram aniquilados.
+- **Por quê:** Quando habilitamos a lente como um espelho de banheiro, o humano acha legal. Mas o OCR via a palavra `"RG"` estampada como `"GЯ"`. Deixar estritamente a gravação e observação de RAW Frame na câmera faz com que a interface aja de maneira fisicamente precisa e impossível de enganar a rede neural.
+
+**6.4 Matriz Avançada C++ -> JS Conv2D (Sharpen Kernel)**
+- **O que foi feito:** Construiu-se uma função limpa aplicando um Edge Kernel `3x3` de pesos centrais elevados via array nativa `Uint8ClampedArray` sobre todos os pixels extraídos.
+- **Por quê:** Fazer binarizações extremas em CNH ou RG velhos ou sujos perdem as letras finas caso existam flashes de luzes plásticas, "queimando" digitalmente partes das datas. A Matriz de Sharpen (Aguçamento) multiplica o ruído apenas nos contornos, criando uma nitidez artificial insana nas letras pretas sem apagar o layout dos números.
+
+**6.5 Tesseract com Multi-Mentes (Bilíngue)**
+- **O que foi feito:** Invocação interna do framework foi modificada para `recognize(canvas, 'por+eng', ...)`.
+- **Por quê:** O modelo de 'Português' enjaulado captura com facilidade filiações e capitais estaduais no documento. Porém, o motor 'Eng' (Inglês) é o algoritmo de OCR mais pesado e massivamente nutrido do projeto Tesseract Global, apresentando acurácia absurdamente superior na classe técnica de Numéricos (0 - 9). Juntar as 2 redes blindou os 8 caracteres de datas contra fraudes.
+
+**6.6 Regex Indestrutível Multi-Campos e Corretores Pós-Inferência**
+- **O que foi feito:** Lixos gerados pelas perdas como as letras `O` e `o` num bloco de data são substituídas digitalmente na matriz por `0`, a letra `l` e `I` por número `1`. Em cascata, uma Array Regex Mutante absorve corrupções de espaçamento das barras (`/ (...\s*[\/\-]{1,3}\s*...) /`) engolindo os resíduos e separando apenas as 3 parcelas do Time Stamp, depois de varridas e extirpadas todas as letras [A-Za-z] intrusas que sobraram.
+- **Por quê:** A micro-impressão de CNH tem texturização por cima da tinta das letras. Essa perturbação sempre fará a lente achar que há um "espaço onde não deve ter" `(08 / . 10 /  1990)`. A Regex amarra as datas estilhaçadas.
+
+**6.7 Algoritmo Global e Heurística Zero `Math.min`**
+- **O que foi feito:** O robô caçador das labels "NASCEU" e "DATA" (que ignorava nas CNHs Versão 2022 a data correta devido ao bloco do título ter trocado de lugar para baixo) foi arrancado pela Matemática Global Pura. 
+- **Por quê:** Não se escaneia um documento de identidade pela métrica do Texto. Todos os documentos do mundo possuem entre 3 a 5 "Blocos Formato Datas" (Emissão, Expedição, 1º CNH, Validade e Nascimento). Obter *Todos os blocos* e jogá-los no algoritmo do JS (`Math.min` em Timestamp UNIX) resultará forçosamente perante os pilares da biologia e cronologia humana que a **Data de Nascimento** sempre será lida como o registro de campo invariavelmente "Mais Velho/Menor" entre todas as instâncias estampadas na mesma lâmina civil do paciente. Usar o Math.min garante durabilidade temporal e legislativa ao sistema contra os Detrans num horizonte de tempo indefinido.

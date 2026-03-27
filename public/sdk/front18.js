@@ -1425,7 +1425,7 @@
             modalContent.innerHTML = `
                 <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
                     <div style="position:relative; width:100%; height:320px; background:#000; border-radius:12px; overflow:hidden; margin-bottom:16px; border:2px solid var(--ag-primary);">
-                        <video id="Front18-doc-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                        <video id="Front18-doc-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1);"></video>
                         <div style="position:absolute; top:20px; left:20px; right:20px; bottom:20px; border:2px dashed rgba(255,255,255,0.7); border-radius:12px; pointer-events:none; box-shadow:0 0 0 9999px rgba(0,0,0,0.5);"></div>
                         <div style="position:absolute; top:35px; left:0; width:100%; text-align:center; color:#fff; font-weight:bold; font-size:14px; text-shadow:0 1px 3px rgba(0,0,0,0.8); pointer-events:none; z-index:10;">
                             Mostre a FRENTE do seu ${docName}

@@ -10,6 +10,32 @@ window.Front18OCR = {
         });
     },
 
+    preprocessImage: function(imageSource) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = imageSource.width || imageSource.videoWidth || 800;
+            canvas.height = imageSource.height || imageSource.videoHeight || 600;
+            ctx.drawImage(imageSource, 0, 0, canvas.width, canvas.height);
+
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+
+            // Binarization & Grayscale High Contrast Threshold
+            for (let i = 0; i < data.length; i += 4) {
+                // Luminance (Grayscale realístico)
+                let brightness = (data[i] * 0.299) + (data[i+1] * 0.587) + (data[i+2] * 0.114);
+                // Threshold agressivo: converte fundo e reflexos claros para Branco e Texto para Preto Absoluto.
+                let threshold = 130; 
+                let v = brightness < threshold ? 0 : 255;
+                data[i] = data[i+1] = data[i+2] = v;
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            resolve(canvas);
+        });
+    },
+
     processDocumentImage: async function(instance, docName, file, canvas) {
         const modalContent = document.getElementById('Front18-modal');
         
@@ -45,10 +71,13 @@ window.Front18OCR = {
                 });
             }
 
+            document.getElementById('f18-ocr-prog-text').innerText = "Otimizando contraste e eliminando reflexos (Limiarização)...";
+            const enhancedCanvas = await this.preprocessImage(sourceUrl);
+
             const txtNode = document.getElementById('f18-ocr-prog-text');
             const barNode = document.getElementById('f18-ocr-prog-bar');
 
-            const { data: { text } } = await window.Tesseract.recognize(sourceUrl, 'por', {
+            const { data: { text } } = await window.Tesseract.recognize(enhancedCanvas, 'por', {
                 logger: m => {
                     if (m.status === 'recognizing text') {
                        const pct = Math.floor(m.progress * 100);
@@ -61,9 +90,13 @@ window.Front18OCR = {
             if(txtNode) { txtNode.innerText = "Lendo algoritmo e Cruzando +18..."; txtNode.style.color = "#10b981"; }
             if(barNode) { barNode.style.background = "#10b981"; barNode.style.width = "100%"; }
 
+            // Normalização OCR para documentos sujos/reflexivos. 
+            // Converte "O" e "o" lidos erroneamente como 0, "l" ou "I" como 1 e etc.
+            let cleanText = text.replace(/[Oo]/g, '0').replace(/[lI]/g, '1').replace(/\|/g, '/');
+            
             // Super Regex para datas brasileiras (DD/MM/YYYY) e afins.
-            const regex = /\b(?:0[1-9]|[12]\d|3[01])[\/\-\.\|](?:0[1-9]|1[0-2])[\/\-\.\|](?:19|20)\d{2}\b/g;
-            const matches = text.match(regex);
+            const regex = /\b(?:0[1-9]|[12]\d|3[01])[\/\-\.](?:0[1-9]|1[0-2])[\/\-\.](?:19|20)\d{2}\b/g;
+            const matches = cleanText.match(regex);
 
             let maxAge = 0;
             let conf = 0;

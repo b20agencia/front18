@@ -21,13 +21,31 @@ class Front18_Frontend {
         $blur_amount   = isset($synced_config['blur_amount']) ? (int)$synced_config['blur_amount'] : 25;
         $blur_selector = !empty($synced_config['blur_selector']) ? $synced_config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
         
-        // Formatar o seletor para atrelar a classe "html.front18-hide " na frente de cada elemento cortado por vírgula
-        $formatted_selectors = implode(', ', array_map(function($sel) {
-            return 'html.front18-hide ' . trim($sel);
-        }, explode(',', $blur_selector)));
+        $protected_ids = get_option( 'front18_protected_media_ids', array() );
 
-        if (empty($formatted_selectors)) {
-            $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, html.front18-hide [data-front18="locked"]';
+        // Fallback avançado sempre incluso para casos fora da biblioteca de mídia (Ex: Elementor Background)
+        $locked_tag_selector = 'html.front18-hide [data-front18="locked"], html.front18-hide .front18-locked';
+
+        $formatted_selectors = '';
+
+        if ( !empty($protected_ids) && is_array($protected_ids) ) {
+            // Nova Arquitetura Granular: Borrar APENAS os IDs de imagens específicos passados via SaaS
+            $formatted_selectors = implode(', ', array_map(function($id) {
+                return 'html.front18-hide .wp-image-' . (int)$id . ', html.front18-hide .attachment-' . (int)$id;
+            }, $protected_ids));
+            
+            // Garantir que a regra manual continue valendo para contornar exceções de Page Builders
+            $formatted_selectors .= ', ' . $locked_tag_selector;
+
+        } else {
+            // Arquitetura Clássica: Filtro genérico baseado em tag (img, video)
+            $formatted_selectors = implode(', ', array_map(function($sel) {
+                return 'html.front18-hide ' . trim($sel);
+            }, explode(',', $blur_selector)));
+
+            if (empty($formatted_selectors)) {
+                $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, ' . $locked_tag_selector;
+            }
         }
         ?>
         <!-- FRONT18: ANTI-FLICKER CORE -->

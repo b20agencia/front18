@@ -7,8 +7,15 @@ class Front18_API {
     public function register_routes() {
         // Rota do Webhook: POST /wp-json/front18/v1/sync
         register_rest_route( 'front18/v1', '/sync', array(
-            'methods'  => 'POST',
+            'methods'  => WP_REST_Server::CREATABLE,
             'callback' => array( $this, 'handle_webhook' ),
+            'permission_callback' => array( $this, 'check_permission' )
+        ) );
+
+        // Rota de Listagem de Imagens Mídia: GET /wp-json/front18/v1/media
+        register_rest_route( 'front18/v1', '/media', array(
+            'methods'  => WP_REST_Server::READABLE,
+            'callback' => array( $this, 'get_media_library' ),
             'permission_callback' => array( $this, 'check_permission' )
         ) );
     }
@@ -56,6 +63,12 @@ class Front18_API {
             update_option( 'front18_synced_config', $sanitized_config );
         }
         
+        $protected_ids = $request->get_param( 'protected_ids' );
+        if ( is_array( $protected_ids ) ) {
+            $ids = array_filter( array_map( 'intval', $protected_ids ) );
+            update_option( 'front18_protected_media_ids', $ids );
+        }
+
         update_option( 'front18_synced_rules', $sanitized_rules );
         update_option( 'front18_last_sync', current_time( 'mysql' ) );
         

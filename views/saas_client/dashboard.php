@@ -128,7 +128,7 @@ $hasAntiScraping = (bool)$planDetails['has_anti_scraping'];
 
 // ======== WEHOOK SYNC HELPER ========
 function dispatchWordPressSync($pdo, $userId) {
-    $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg, blur_amount, blur_selector, wp_rules, wp_url FROM saas_origins WHERE user_id = ? LIMIT 1");
+    $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg, blur_amount, blur_selector, protected_media_ids, wp_rules, wp_url FROM saas_origins WHERE user_id = ? LIMIT 1");
     $stmtOrigin->execute([$userId]);
     $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
     
@@ -143,8 +143,11 @@ function dispatchWordPressSync($pdo, $userId) {
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     
+    $protectedMedia = !empty($origin['protected_media_ids']) ? json_decode($origin['protected_media_ids'], true) : [];
+
     $pushData = [
         'rules'  => $wp_rules,
+        'protected_ids' => $protectedMedia,
         'api_key' => $origin['api_key'],
         'endpoint' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/api/track.php',
         'script_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/sdk/front18.js?v=' . time(),
@@ -277,6 +280,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $pushMsg = $sync['msg'];
     
     die(json_encode(['success' => true, 'push_status' => $pushStatus, 'push_msg' => $pushMsg]));
+}
+
+// Proxies de Requisição da API Grã-Mestre de Mídia (SaaS <-> WordPress Cliente)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'load_wp_media') {
+    $page = (int)($_GET['page'] ?? 1);
+    
+    $stmtOrigin = $pdo->prepare("SELECT wp_url, api_key FROM saas_origins WHERE user_id = ? LIMIT 1");
+    $stmtOrigin->execute([$userId]);
+    $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
+    
+    $wp_url = rtrim($origin['wp_url'] ?? '', '/');
+    if (!$wp_url || !$origin['api_key']) {
+        die(json_encode(['success' => false, 'error' => 'Vínculo do Endpoint WordPress (aba Sincronização) não configurado ou chave de API revogada.']));
+    }
+    
+    $ch = curl_init("$wp_url/wp-json/front18/v1/media?page=$page&per_page=48");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer " . $origin['api_key']]);
+    $res = curl_exec($ch);
+    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    header('Content-Type: application/json');
+    if ($httpcode == 200 && $res) {
+        die($res); // Retorna exatamente o JSON formatado pelo Plugin
+    } else {
+        die(json_encode(['success' => false, 'error' => "Falha ao conectar via PUSH. Código HTTP $httpcode. Verifique se o plugin Front18 está instalado, atualizado e ativado no WordPress do cliente."]));
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_wp_media') {
+    $protected_ids = empty($_POST['protected_ids']) ? [] : $_POST['protected_ids'];
+    if (!is_array($protected_ids)) { $protected_ids = []; }
+    
+    $clean_ids = array_values(array_unique(array_filter(array_map('intval', $protected_ids))));
+    $json_ids = json_encode($clean_ids);
+    
+    $stmtUpd = $pdo->prepare("UPDATE saas_origins SET protected_media_ids = ? WHERE user_id = ?");
+    $stmtUpd->execute([$json_ids, $userId]);
+    
+    // Dispara webhook pro cliente acoplar o CSS de Blur nessas TDs exatas
+    $sync = dispatchWordPressSync($pdo, $userId);
+    
+    header('Content-Type: application/json');
+    die(json_encode(['success' => true, 'total' => count($clean_ids), 'push_status' => $sync['status']]));
 }
 
 if (!$config) {
@@ -1930,6 +1979,186 @@ $myOrigins = $myOrigins ?? [];
                     }
                     </script>
                 </form>
+
+                <!-- SECTION: GERENCIADOR GRÃ-MESTRE DE MÍDIA -->
+                <div class="mt-12 pt-10 border-t border-slate-800">
+                    <div class="glass-panel p-8 rounded-2xl border border-emerald-500/20 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 pointer-events-none"></div>
+                        
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 relative">
+                            <div>
+                                <h4 class="font-bold text-white text-xl flex items-center gap-2 mb-2"><i class="ph-bold ph-images text-emerald-400"></i> Gerenciador Grã-Mestre de Mídia</h4>
+                                <p class="text-[11px] text-slate-400 max-w-xl">Blindagem granular extrema. Conecte-se ao WordPress e ative o Blur **individualmente** foto por foto. Ideal para vitrines de e-commerce onde algumas fotos são livres e outras são +18. Isso desabilita as regras globais genéricas de imagens.</p>
+                            </div>
+                            <button id="btnLoadMedia" type="button" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl shadow-[0_4px_15px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_20px_rgba(16,185,129,0.4)] transition-all flex items-center gap-2 text-sm uppercase tracking-wide shrink-0">
+                                <i class="ph-bold ph-plugs-connected"></i> Conectar Biblioteca
+                            </button>
+                        </div>
+                        
+                        <!-- Conteiner Dinâmico da Biblioteca -->
+                        <div id="mediaManagerWorkspace" class="hidden">
+                            <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
+                                <p class="text-xs text-slate-400 font-mono" id="mediaStats"><i class="ph-bold ph-circle-notch animate-spin"></i> Analisando Servidor...</p>
+                                <button type="button" id="btnSaveMedia" class="relative overflow-hidden bg-slate-900 border border-slate-700 hover:border-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors flex items-center gap-2">
+                                    <i class="ph-bold ph-floppy-disk text-emerald-400"></i> Salvar Matriz de Blindagem
+                                </button>
+                            </div>
+                            
+                            <form id="frmMediaSync">
+                                <!-- Grid Virtualizada das Imagens -->
+                                <div id="mediaGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <!-- Populated via Ajax -->
+                                </div>
+                                <div class="mt-4 flex justify-center hidden" id="mediaPaginationBox">
+                                    <button type="button" id="btnLoadMoreMedia" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-6 py-2 rounded-full text-xs uppercase tracking-wider border border-slate-700">
+                                        Carregar Mais Imagens...
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15,23,42,0.5); border-radius: 10px; }
+                    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(51,65,85, 0.8); border-radius: 10px; }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(71,85,105, 1); }
+                    .media-checkbox:checked + div { border-color: #10b981; }
+                    .media-checkbox:checked + div .overlay-blur { opacity: 1; }
+                    .media-checkbox:checked + div .check-icon-media { opacity: 1; transform: scale(1); }
+                </style>
+
+                <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const btnLoad = document.getElementById('btnLoadMedia');
+                    const workspace = document.getElementById('mediaManagerWorkspace');
+                    const grid = document.getElementById('mediaGrid');
+                    const btnMore = document.getElementById('btnLoadMoreMedia');
+                    const btnSave = document.getElementById('btnSaveMedia');
+                    const stats = document.getElementById('mediaStats');
+                    
+                    let currentPage = 1;
+                    let isLoading = false;
+                    let currentlyProtectedIds = [];
+
+                    const loadMedia = async (page = 1, append = false) => {
+                        if(isLoading) return;
+                        isLoading = true;
+                        
+                        if(!append) {
+                            grid.innerHTML = '<div class="col-span-full py-12 text-center text-emerald-500/50 flex flex-col items-center justify-center gap-2"><i class="ph-bold ph-circle-notch animate-spin text-3xl"></i><span class="text-xs uppercase tracking-widest font-bold">Hackeando Servidor...</span></div>';
+                            workspace.classList.remove('hidden');
+                        } else {
+                            btnMore.innerHTML = '<i class="ph-bold ph-circle-notch animate-spin"></i> Puxando...';
+                        }
+
+                        try {
+                            const res = await fetch(`?route=dashboard&action=load_wp_media&page=${page}`);
+                            const data = await res.json();
+                            
+                            if (data.error) {
+                                alert("ERRO DE CONEXÃO: " + data.error);
+                                if(!append) workspace.classList.add('hidden');
+                                isLoading = false;
+                                return;
+                            }
+                            
+                            if(!append) {
+                                grid.innerHTML = '';
+                                currentlyProtectedIds = data.protected_ids || [];
+                            }
+
+                            if(!data.data || data.data.length === 0) {
+                                if(!append) grid.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 text-sm">Nenhuma mídia compatível localizada no WordPress.</div>';
+                                document.getElementById('mediaPaginationBox').classList.add('hidden');
+                                isLoading = false;
+                                return;
+                            }
+
+                            stats.innerHTML = `Biblioteca Mapeada: <span class="text-white font-bold">${data.total_items} Imagens Totais</span>`;
+
+                            data.data.forEach(img => {
+                                const isProtected = currentlyProtectedIds.includes(String(img.id)) || currentlyProtectedIds.includes(parseInt(img.id));
+                                
+                                const html = `
+                                    <label class="cursor-pointer relative group block aspect-square rounded-xl overflow-hidden bg-slate-900 border border-slate-800">
+                                        <input type="checkbox" name="protected_ids[]" value="${img.id}" class="media-checkbox sr-only" ${isProtected ? 'checked' : ''}>
+                                        <div class="absolute inset-0 border-2 border-transparent transition-colors z-20 rounded-xl pointer-events-none">
+                                            <div class="overlay-blur absolute inset-0 backdrop-blur-md bg-slate-950/60 opacity-0 transition-opacity flex flex-col items-center justify-center pointer-events-none">
+                                                <i class="ph-fill ph-lock-key text-emerald-400 text-2xl drop-shadow-lg scale-[0.8] opacity-0 transition-all duration-300 check-icon-media mt-2"></i>
+                                            </div>
+                                            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 pt-8 pb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <p class="text-[9px] text-white font-mono truncate" title="${img.title}">ID: ${img.id} - ${img.title}</p>
+                                            </div>
+                                        </div>
+                                        <img src="${img.url}" loading="lazy" class="w-full h-full object-cover transition-transform group-hover:scale-110">
+                                    </label>
+                                `;
+                                grid.insertAdjacentHTML('beforeend', html);
+                            });
+
+                            if (currentPage < data.total_pages) {
+                                document.getElementById('mediaPaginationBox').classList.remove('hidden');
+                                btnMore.innerHTML = 'Carregar Mais Imagens...';
+                            } else {
+                                document.getElementById('mediaPaginationBox').classList.add('hidden');
+                            }
+
+                        } catch (e) {
+                            console.error(e);
+                            alert("Falha extrema de CORS ou Servidor Inalcançável. Verifique se o plugin no WordPress foi atualizado.");
+                            if(!append) workspace.classList.add('hidden');
+                        }
+                        
+                        isLoading = false;
+                    };
+
+                    btnLoad.addEventListener('click', () => {
+                        currentPage = 1;
+                        loadMedia(currentPage, false);
+                    });
+
+                    btnMore.addEventListener('click', () => {
+                        if(isLoading) return;
+                        currentPage++;
+                        loadMedia(currentPage, true);
+                    });
+
+                    btnSave.addEventListener('click', async () => {
+                        const originalHtml = btnSave.innerHTML;
+                        btnSave.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-emerald-400"></i> Aplicando Blur Externo...';
+                        btnSave.disabled = true;
+
+                        const formElement = document.getElementById('frmMediaSync');
+                        const formData = new FormData(formElement);
+                        formData.append('action', 'save_wp_media');
+
+                        try {
+                            const response = await fetch('?route=dashboard', { method: 'POST', body: formData });
+                            const json = await response.json();
+                            
+                            if(json.success) {
+                                btnSave.innerHTML = '<i class="ph-bold ph-check text-white"></i> Sucesso PUSH: ' + json.total + ' Protegidas!';
+                                btnSave.classList.add('bg-emerald-600', 'border-emerald-500');
+                                setTimeout(() => {
+                                    btnSave.innerHTML = originalHtml;
+                                    btnSave.classList.remove('bg-emerald-600', 'border-emerald-500');
+                                    btnSave.disabled = false;
+                                }, 3000);
+                            } else {
+                                alert("ERRO NO PUSH: " + json.error);
+                                btnSave.innerHTML = originalHtml;
+                                btnSave.disabled = false;
+                            }
+                        } catch(e) {
+                            alert("ERRO LOCAL: " + e.message);
+                            btnSave.innerHTML = originalHtml;
+                            btnSave.disabled = false;
+                        }
+                    });
+                });
+                </script>
             </div>
         </div> <!-- Fecha flex-1 overflow-y-auto -->
             

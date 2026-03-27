@@ -64,6 +64,7 @@ class Database {
                 domain VARCHAR(255) UNIQUE NOT NULL,
                 api_key VARCHAR(100) UNIQUE NULL,
                 terms_url VARCHAR(255) NULL,
+                protected_media_ids LONGTEXT NULL,
                 privacy_url VARCHAR(255) NULL,
                 privacy_config JSON NULL,
                 is_active BOOLEAN DEFAULT TRUE,

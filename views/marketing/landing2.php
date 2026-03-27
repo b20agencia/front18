@@ -63,7 +63,7 @@ catch (Exception $e) {
                 <a href="#riscos">Riscos</a>
                 <a href="#solucao">Solução</a>
                 <a href="#recursos">Recursos</a>
-                <a href="#conformidade">Leis</a>
+
                 <a href="#planos">Planos</a>
                 <a href="#faq">FAQ</a>
                 <a href="?route=login" class="nav-btn">Acessar Painel</a>
@@ -104,7 +104,7 @@ catch (Exception $e) {
                     <path
                         d="M8.5 14.5A2.5 2.5 0 0 0 11 12c-2.2-.6-3.8-2.6-4.5-5-.4-1.2-1.3-1.8-2.5-1.5a5.5 5.5 0 0 0 10 9c.7-2.2 0-4.6-2-6 1.4 3 0 6.5-2.5 8" />
                 </svg> Proteger Meu Site Agora</a>
-            <a href="/contato" class="btn-lg btn-ghost"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            <a href="mailto:comercial@front18.com?subject=Consultoria%20de%20Proteção%20LGPD" class="btn-lg btn-ghost"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                     <line x1="16" y1="2" x2="16" y2="6" />
@@ -410,7 +410,7 @@ else: ?>
                         <li>Logs via Webhook/ERP</li>
                         <li>Equipe Jurídica Dedicada</li>
                     </ul>
-                    <a href="/contato" class="p-btn p-btn-def">Falar com Vendas</a>
+                    <a href="mailto:comercial@front18.com?subject=Plano%20Enterprise" class="p-btn p-btn-def">Falar com Vendas</a>
                 </div>
                 <?php
 endif; ?>

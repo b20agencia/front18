@@ -102,7 +102,7 @@ class Front18_Frontend {
         if ( ! $this->should_run() ) return;
 
         $api_key       = get_option( 'front18_api_key', '' );
-        $sdk_url       = get_option( 'front18_sdk_url', 'https://front18.com/public/sdk/front18.js' );
+        $sdk_url = get_option('front18_sdk_url', 'https://front18.com/public/sdk/front18.js');
         $global_object = get_option( 'front18_global_object', 'Front18' );
         $token_key     = get_option( 'front18_token_key', 'api-key' );
         $debug_mode    = get_option( 'front18_debug_mode', false );

@@ -767,7 +767,7 @@
                     vertical-align: top;
                     overflow: hidden !important; /* Contain blur edges perfectly */
                     cursor: pointer !important;
-                    background: #0f172a !important; /* Bloqueador bruto nativo */
+                    background: #0f172a !important; /* Backup background */
                 }
                 .Front18-media-wrapper-premium > .Front18-media-blurred {
                     grid-area: 1 / 1 !important;
@@ -778,8 +778,9 @@
                 /* Compatibilidade com as tags nativas: Força agressiva contra IFrames do PandaVideo e Safari */
                 html.Front18-blur-active .Front18-media-blurred { 
                     cursor: pointer !important; 
-                    opacity: 0.1 !important; /* Afoga a midia dentro do dark mode */
-                    filter: blur(35px) grayscale(100%) !important; 
+                    opacity: 0.8 !important; /* Mantém a mídia visível para gerar teaser */
+                    filter: blur(25px) grayscale(40%) !important; 
+                    transform: scale(1.1) !important; /* Previne bordas vazadas do blur */
                 }
             `;
 
@@ -940,12 +941,11 @@
                         if (!container.classList.contains('Front18-smart-container-blurred')) {
                             container.classList.add('Front18-smart-container-blurred');
 
-                            // Arma Nível Delta: Apaga o Background no Braço! Impossível o navegador renderizar a imagem se eu a deleto da memória ativa via JS !important.
-                            container.dataset.agOrigBg = container.style.background || '';
-                            container.dataset.agOrigBgImg = container.style.backgroundImage || '';
-                            container.style.setProperty('background', '#0f172a', 'important');
-                            container.style.setProperty('background-image', 'none', 'important');
-
+                            // Mantém a imagem, mas borra o próprio container!
+                            container.style.setProperty('filter', 'blur(25px) grayscale(40%)', 'important');
+                            container.style.setProperty('opacity', '0.8', 'important');
+                            container.style.setProperty('cursor', 'pointer', 'important');
+                            container.style.setProperty('transform', 'scale(1.05)', 'important'); /* Esconde bordas do blur */
                             container.addEventListener('click', openModal);
                         }
                     }
@@ -2193,10 +2193,10 @@
 
                 // Remove Obliteração Sledgehammer das classes Elementor e containers
                 document.querySelectorAll('.Front18-smart-container-blurred').forEach(el => {
-                    el.style.removeProperty('background');
-                    el.style.removeProperty('background-image');
-                    el.style.background = el.dataset.agOrigBg || '';
-                    el.style.backgroundImage = el.dataset.agOrigBgImg || '';
+                    el.style.removeProperty('filter');
+                    el.style.removeProperty('opacity');
+                    el.style.removeProperty('transform');
+                    el.style.removeProperty('cursor');
                     el.classList.remove('Front18-smart-container-blurred');
                 });
                 document.querySelectorAll('.Front18-media-wrapper-premium').forEach(el => {

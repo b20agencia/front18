@@ -1893,7 +1893,12 @@ $myOrigins = $myOrigins ?? [];
 
                     <!-- Controle de Escopo -->
                     <div class="glass-panel p-6 rounded-2xl border border-slate-800">
-                        <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-crosshair text-indigo-400"></i> Controle de Escopo Protegido</h4>
+                        <div class="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                            <h5 class="font-bold text-amber-400 text-sm mb-1"><i class="ph-bold ph-warning"></i> Atenção: Isso não escolhe entre "Tapa Tudo" vs "Blur Inteligente"!</h5>
+                            <p class="text-xs text-slate-400 leading-relaxed">Este Bloco define apenas <strong>ONDE</strong> o plugin vai rodar (Ex: Pagina inicial). Para alterar <strong>COMO</strong> o site será protegido (A tela preta vs Borrar Imagens Mídia Inteligente), você deve ir na outra Aba: <strong>"Painel de Blindagem > Setup Legal"</strong> e escolher "Media Teaser".</p>
+                        </div>
+                        
+                        <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-crosshair text-indigo-400"></i> Onde o WAF será ligado (Escopo)</h4>
                         
                         <div class="space-y-4">
                             <!-- Global -->

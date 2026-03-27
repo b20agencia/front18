@@ -2039,19 +2039,21 @@
                         if (isFinalized) return;
                         clearInterval(realTimeInterval);
                         timerHud.style.display = 'none';
-                        if (usingRealCamera) {
+                        if (usingRealCamera && video.videoWidth > 0) {
                             const can = document.createElement('canvas'); can.width = video.videoWidth; can.height = video.videoHeight;
                             const ctx = can.getContext('2d'); ctx.drawImage(video, 0, 0, can.width, can.height);
                             checkVarianceFallback(ctx, can.width, can.height);
                         } else {
-                            runInference();
+                            resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Permissão Recusada ou Falha de Lente!<br><small style="color:#64748b">O motor requer acesso à câmera para aferir sua vitalidade.</small></span>`;
+                            setTimeout(() => finalizeAI(0, 0), 2000);
                         }
                     }
                 } else {
                     if (!isFinalized) {
                         clearInterval(realTimeInterval);
                         timerHud.style.display = 'none';
-                        runInference();
+                        resultMsg.innerHTML = `<span style="color:#ef4444;">${UI_ICONS.error} Câmera Web não Detectada.<br><small style="color:#64748b">Este módulo requer hardware fotográfico ligado (HTTPS).</small></span>`;
+                        setTimeout(() => finalizeAI(0, 0), 2000);
                     }
                 }
             };

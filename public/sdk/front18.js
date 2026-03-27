@@ -1405,13 +1405,19 @@
                             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                             Fazer Upload de Galeria
                         </label>
-                        <input type="file" id="Front18-upload-input" accept="image/*" style="display:none;" onchange="alert('Módulo Inteligente de Upload de Documento B2B sendo ativado...')">
+                        <input type="file" id="Front18-upload-input" accept="image/*" style="display:none;">
                     </div>
                 </div>
             `;
             
             document.getElementById('Front18-btn-back-docs').addEventListener('click', () => { this.showDocumentChoices(); });
             document.getElementById('Front18-btn-docs-camera').addEventListener('click', () => { this.startDocumentScan(docName); });
+            
+            document.getElementById('Front18-upload-input').addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    this.processDocumentImage(docName, e.target.files[0], null);
+                }
+            });
         },
 
         startDocumentScan: async function(docName) {
@@ -1470,32 +1476,39 @@
                 canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // Módulo B2B Fake Approval Effect (OCR Analysis)
-                const overlayLayer = document.createElement('div');
-                overlayLayer.style = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; z-index:20; border-radius:12px;";
-                overlayLayer.innerHTML = '<div class="ag-spinner" style="border-top-color:#38bdf8; width:48px; height:48px; border-width:4px; margin-bottom:16px;"></div><div style="font-weight:700; color:#38bdf8; font-size:18px;" id="f18-ocr-status">Analisando Imagem...</div><div style="font-size:13px; opacity:0.6; margin-top:8px;" id="f18-ocr-sub">Acionando OCR Front18 Hub</div>';
-                document.getElementById('Front18-doc-video').parentElement.appendChild(overlayLayer);
+                if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); }
                 
-                setTimeout(() => {
-                    document.getElementById('f18-ocr-status').innerText = "Validando Idade";
-                    document.getElementById('f18-ocr-sub').innerText = "Cruzando dados com bureau 18+...";
-                    setTimeout(() => {
-                        document.getElementById('f18-ocr-status').innerText = "+18 Confirmado!";
-                        document.getElementById('f18-ocr-status').style.color = "#10b981";
-                        document.getElementById('f18-ocr-sub').innerText = "Acesso aprovado e liberado.";
-                        const spinner = overlayLayer.querySelector('.ag-spinner');
-                        spinner.style.border = "none";
-                        spinner.innerHTML = '<svg width="48" height="48" fill="none" stroke="#10b981" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>';
-                        
-                        setTimeout(() => {
-                            if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); }
-                            this.config.aiAge = 25; // Idade detectada no documento
-                            this.config.aiConfidence = 99.8; // Alta confiança OCR
-                            this.showReceiptBanner();
-                        }, 1200);
-                    }, 2000);
-                }, 1500);
+                this.processDocumentImage(docName, null, canvas);
             });
+        },
+
+        loadOCRModule: async function() {
+            if (window.Front18OCR) return true;
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                let scriptUrl = 'https://cdn.front18.com/sdk/front18-ocr.js';
+                const scripts = document.getElementsByTagName('script');
+                for (let i=0; i<scripts.length; i++) {
+                    if (scripts[i].src && scripts[i].src.indexOf('front18.js') !== -1) {
+                        scriptUrl = scripts[i].src.replace('front18.js', 'front18-ocr.js');
+                        break;
+                    }
+                }
+                s.src = scriptUrl;
+                s.onload = () => resolve(true);
+                s.onerror = () => reject(new Error('Falha ao instanciar OCR externo.'));
+                document.body.appendChild(s);
+            });
+        },
+
+        processDocumentImage: async function(docName, file, canvas) {
+            try {
+                await this.loadOCRModule();
+                window.Front18OCR.processDocumentImage(this, docName, file, canvas);
+            } catch(e) {
+                alert("Módulo OCR indisponível. Motivo: " + e.message);
+                this.showValidationOptions();
+            }
         },
 
         startMobileHandoff: async function() {

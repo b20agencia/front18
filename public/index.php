@@ -31,6 +31,10 @@ switch ($route) {
         require __DIR__ . '/../views/marketing/landing.php';
         break;
         
+    case 'landing2':
+        require __DIR__ . '/../views/marketing/landing2.php';
+        break;
+        
     case 'login':
         require __DIR__ . '/../views/auth/login.php';
         break;

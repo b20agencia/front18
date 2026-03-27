@@ -143,6 +143,8 @@
                         if (payload.config.display_mode) {
                             this.config.mode = payload.config.display_mode; // 'global_lock' ou 'blur_media'
                         }
+                        this.config.blur_selector = payload.config.blur_selector;
+                        this.config.protected_media_ids = payload.config.protected_media_ids;
                         // Custom Branding Theme
                         this.config.theme = {
                             bg: payload.config.color_bg || '#0f172a',
@@ -804,8 +806,26 @@
 
             // Reação dinâmica na Arvore do DOM (Atraso mínimo para Lazy Loads)
             setTimeout(() => {
-                // 1. Tags Nativas (Blur Filtro Direto com Pseudo Wrapper)
-                const rawMedias = document.querySelectorAll('img, video, iframe, picture, source');
+                // 1. Matriz Granular: Usa a lista exata do SaaS ou fallback para o seletor padrão
+                let customSelectors = [];
+                if (this.config.protected_media_ids && this.config.protected_media_ids.length > 0) {
+                    this.config.protected_media_ids.forEach(id => customSelectors.push('.wp-image-' + id + ', .attachment-' + id));
+                    
+                    // Failsafe: Quando se usa Granular, se garantimos que a página não fique toda invisivel caso de FOUC
+                    let f18Style = document.getElementById('f18-fouc-shield');
+                    if (f18Style) f18Style.textContent = ''; 
+                } else if (this.config.blur_selector) {
+                    customSelectors = this.config.blur_selector.split(',');
+                } else {
+                    customSelectors = ['img', 'video', 'iframe', 'picture', 'source'];
+                }
+                
+                let rawMedias = [];
+                try {
+                    rawMedias = document.querySelectorAll(customSelectors.join(','));
+                } catch(e) {
+                    rawMedias = document.querySelectorAll('img, video, iframe, picture, source');
+                }
                 const exclusions = '#masthead, .site-header, header.main-header, header.elementor-location-header, footer, nav.site-navigation, aside.sidebar, .site-footer, [data-elementor-type="header"], [data-elementor-type="footer"], .elementor-location-header, .elementor-location-footer, .logo, .custom-logo';
 
                 rawMedias.forEach(media => {

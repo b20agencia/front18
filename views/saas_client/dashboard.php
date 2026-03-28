@@ -36,82 +36,10 @@ $stmtOrigin = $pdo->prepare("SELECT * FROM saas_origins WHERE user_id = ? LIMIT 
 $stmtOrigin->execute([$userId]);
 $config = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
 
-// Salvar Custom Deny URL
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_fallback') {
-    $denyUrlInput = $_POST['deny_url'] ?? '';
-    if (empty($denyUrlInput)) {
-        $stmtUpdate = $pdo->prepare("UPDATE saas_origins SET deny_url = NULL WHERE user_id = ?");
-        $stmtUpdate->execute([$userId]);
-    } else {
-        if (strpos($denyUrlInput, 'http://') === 0) { $denyUrlInput = str_replace('http://', 'https://', $denyUrlInput); }
-        elseif (strpos($denyUrlInput, 'https://') !== 0) { $denyUrlInput = 'https://' . $denyUrlInput; }
-        $stmtUpdate = $pdo->prepare("UPDATE saas_origins SET deny_url = ? WHERE user_id = ?");
-        $stmtUpdate->execute([$denyUrlInput, $userId]);
-    }
-    // Previne Re-Envio de Formário (PRG Pattern)
-    header("Location: ?route=dashboard");
-    exit;
-}
+require_once __DIR__ . '/../../src/Core/DashboardActions.php';
+DashboardActions::handle($pdo, $userId);
 
-// Adicionar Novo Domínio (Gerar API Key Mestra no Painel)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_domain') {
-    $domain_url = strtolower(trim($_POST['domain_url'] ?? ''));
-    $domain_url = str_replace(['https://', 'http://', 'www.'], '', $domain_url);
-    $domain_url = rtrim(explode('/', $domain_url)[0], '/');
-    
-    if (!empty($domain_url)) {
-        // Valida limites comerciais do Plano 
-        $stmtMax = $pdo->prepare("SELECT max_domains FROM plans p JOIN saas_users u ON p.id = u.plan_id WHERE u.id = ?");
-        $stmtMax->execute([$userId]);
-        $maxDomains = (int)($stmtMax->fetchColumn() ?: 1); // Fallback para 1
-        
-        $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM saas_origins WHERE user_id = ?");
-        $stmtCount->execute([$userId]);
-        
-        $originCount = (int)$stmtCount->fetchColumn();
-        if ($originCount >= $maxDomains) {
-            $_SESSION['dashboard_error'] = "<i class=\"ph-bold ph-warning text-yellow-500 mr-2\"></i> O limite do seu Plano atual é de $maxDomains domínio(s). Faça o upgrade ou entre em contato com o suporte.";
-        } else {
-            $newKey = 'SaaS_' . strtoupper(substr(md5(uniqid()), 0, 16)) . rand(10,99);
-            try { 
-                $stmt = $pdo->prepare("INSERT INTO saas_origins (user_id, domain, api_key, protection_level, anti_scraping, seo_safe, is_active) VALUES (?, ?, ?, 1, 0, 0, 1)");
-                $stmt->execute([$userId, $domain_url, $newKey]);
-                $_SESSION['dashboard_success'] = "Domínio '$domain_url' adicionado com sucesso!";
-            } catch(\PDOException $e) {
-                if (strpos($e->getMessage(), '1062 Duplicate entry') !== false) {
-                    $_SESSION['dashboard_error'] = "<i class=\"ph-bold ph-x-circle text-red-500 mr-2\"></i> O domínio '$domain_url' já foi registrado na base.";
-                } else {
-                    $_SESSION['dashboard_error'] = "Erro de integridade de banco de dados temporário.";
-                }
-            }
-        }
-    }
-    header("Location: ?route=dashboard#domains");
-    exit;
-}
-
-// Remover Domínio (Libera Franquia de Limite de Planos)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_domain') {
-    $domainIdToDelete = (int)$_POST['domain_id'];
-    
-    // Verifica propriedade p/ Segurança
-    $stmtCheck = $pdo->prepare("SELECT id, domain FROM saas_origins WHERE id = ? AND user_id = ?");
-    $stmtCheck->execute([$domainIdToDelete, $userId]);
-    $ownDomain = $stmtCheck->fetch();
-
-    if ($ownDomain) {
-        $pdo->prepare("DELETE FROM access_logs WHERE client_id = ?")->execute([$domainIdToDelete]);
-        $pdo->prepare("DELETE FROM saas_origins WHERE id = ?")->execute([$domainIdToDelete]);
-        $_SESSION['dashboard_success'] = "O domínio '{$ownDomain['domain']}' e toda a prova material vinculada a ele foram Destruídos. Franquia Liberada.";
-    } else {
-        $_SESSION['dashboard_error'] = "Ação não permitida.";
-    }
-    
-    header("Location: ?route=dashboard#domains");
-    exit;
-}
-
-// Recupera o Plano Oficial do Usuário no Banco
+// Recupera o Plano Oficial do Usuário no Banco (Para Renderização da View)
 $stmtPlan = $pdo->prepare("SELECT * FROM plans WHERE id = ?");
 $stmtPlan->execute([$user['plan_id'] ?? 1]); // Padrão Plan ID 1 se não setado
 $planDetails = $stmtPlan->fetch(PDO::FETCH_ASSOC);
@@ -126,228 +54,6 @@ $allowedLevel = (int)$planDetails['allowed_level'];
 $hasSeoSafe = (bool)$planDetails['has_seo_safe'];
 $hasAntiScraping = (bool)$planDetails['has_anti_scraping'];
 
-// ======== WEHOOK SYNC HELPER ========
-function dispatchWordPressSync($pdo, $userId) {
-    // Auto-Heal: Tenta criar a coluna se ela não existir
-    try {
-        $pdo->exec("ALTER TABLE saas_origins ADD COLUMN protected_media_ids LONGTEXT NULL AFTER blur_selector");
-    } catch(PDOException $e) { /* Já existe ou outro erro tolerável */ }
-
-    $stmtOrigin = $pdo->prepare("SELECT api_key, display_mode, color_bg, blur_amount, blur_selector, protected_media_ids, wp_rules, wp_url FROM saas_origins WHERE user_id = ? LIMIT 1");
-    try {
-        $stmtOrigin->execute([$userId]);
-    } catch(Exception $e) {
-        return ['status' => false, 'msg' => 'Falha DB na origem local: ' . $e->getMessage()];
-    }
-    
-    $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
-    
-    if (empty($origin['wp_url']) || empty($origin['api_key'])) return ['status' => false, 'msg' => 'Sem URL do WP configurada.'];
-    
-    $wp_url = rtrim($origin['wp_url'], '/');
-    $wp_rules = !empty($origin['wp_rules']) ? json_decode($origin['wp_rules'], true) : ['global'=>false,'home'=>false,'cpts'=>[]];
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $wp_url . '/wp-json/front18/v1/sync');
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    
-    $protectedMedia = !empty($origin['protected_media_ids']) ? json_decode($origin['protected_media_ids'], true) : [];
-
-    $pushData = [
-        'rules'  => $wp_rules,
-        'protected_ids' => $protectedMedia,
-        'api_key' => $origin['api_key'],
-        'endpoint' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/api/track.php',
-        'script_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/sdk/front18.js?v=' . time(),
-        'config' => [
-            'display_mode'  => !empty($origin['display_mode']) ? $origin['display_mode'] : 'global_lock',
-            'color_bg'      => !empty($origin['color_bg']) ? $origin['color_bg'] : '#0f172a',
-            'blur_amount'   => isset($origin['blur_amount']) ? (int)$origin['blur_amount'] : 25,
-            'blur_selector' => !empty($origin['blur_selector']) ? $origin['blur_selector'] : 'img, video, iframe, [data-front18="locked"]'
-        ]
-    ];
-    
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($pushData));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $origin['api_key']
-    ]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-    
-    $response = curl_exec($ch);
-    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($httpcode >= 200 && $httpcode < 300) {
-        return ['status' => true, 'msg' => 'Sincronizado.'];
-    }
-    return ['status' => false, 'msg' => "Erro $httpcode: $response"];
-}
-
-// Salvar Configurações Globais de WAF e Nível de Proteção (Ajax-friendly)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_settings') {
-    $level = isset($_POST['level']) ? (int)$_POST['level'] : 1;
-    $anti_scrap = isset($_POST['anti_scraping']) ? 1 : 0;
-    $seo_safe = isset($_POST['seo_safe']) ? 1 : 0;
-    $server_validation = isset($_POST['server_validation_active']) ? 1 : 0;
-    $ai_estimation = isset($_POST['age_estimation_active']) ? 1 : 0;
-    $display_mode = isset($_POST['display_mode']) && in_array($_POST['display_mode'], ['blur_media', 'global_lock']) ? $_POST['display_mode'] : 'global_lock';
-    
-    $blur_amount = isset($_POST['blur_amount']) ? (int)$_POST['blur_amount'] : 25;
-    $blur_selector = isset($_POST['blur_selector']) ? trim($_POST['blur_selector']) : '';
-    if (empty($blur_selector)) {
-        $blur_selector = 'img, video, iframe, [data-front18="locked"]';
-    }
-    
-    // ENFORCEMENT JURÍDICO/COMERCIAL BACKEND (Verdadeiro Sincronismo)
-    // Garante que o usuário NUNCA salve configurações maiores que seu Plano atual permite
-    if ($level > $allowedLevel) { $level = $allowedLevel; }
-    if (!$hasSeoSafe) { $seo_safe = 0; }
-    if (!$hasAntiScraping) { $anti_scrap = 0; }
-    
-    $stmtUpdate = $pdo->prepare("UPDATE saas_origins SET protection_level = ?, anti_scraping = ?, seo_safe = ?, server_validation_active = ?, age_estimation_active = ?, display_mode = ?, blur_amount = ?, blur_selector = ? WHERE user_id = ?");
-    $stmtUpdate->execute([$level, $anti_scrap, $seo_safe, $server_validation, $ai_estimation, $display_mode, $blur_amount, $blur_selector, $userId]);
-    
-    $sync = dispatchWordPressSync($pdo, $userId);
-    die(json_encode(['success' => true, 'sync' => $sync]));
-}
-
-// Salvar Personalização UI e URLs Dinâmicas
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_appearance') {
-    $c_bg = preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['color_bg'] ?? '') ? $_POST['color_bg'] : '#0f172a';
-    $c_txt = preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['color_text'] ?? '') ? $_POST['color_text'] : '#f8fafc';
-    $c_pri = preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['color_primary'] ?? '') ? $_POST['color_primary'] : '#6366f1';
-    
-    $terms = filter_var($_POST['terms_url'] ?? '', FILTER_SANITIZE_URL) ?: null;
-    $priv = filter_var($_POST['privacy_url'] ?? '', FILTER_SANITIZE_URL) ?: null;
-    $deny = filter_var($_POST['deny_url'] ?? '', FILTER_SANITIZE_URL) ?: null;
-    
-    $modalConfig = [
-        'title' => htmlspecialchars($_POST['modal_title'] ?? 'Conteúdo Protegido'),
-        'desc' => htmlspecialchars($_POST['modal_desc'] ?? 'Este portal contém material comercial destinado exclusivamente para o público adulto. É necessário comprovar a sua tutela legal.'),
-        'btn_yes' => htmlspecialchars($_POST['modal_btn_yes'] ?? 'Reconhecer e Continuar'),
-        'btn_no' => htmlspecialchars($_POST['modal_btn_no'] ?? 'Sou menor de idade (Sair)'),
-        'cam_shape' => htmlspecialchars($_POST['cam_shape'] ?? 'circle'),
-        'cam_border_color' => preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['cam_border_color'] ?? '') ? $_POST['cam_border_color'] : '#6366f1',
-        'cam_glow' => isset($_POST['cam_glow']) ? true : false,
-        'modal_border_color' => preg_match('/^#[0-9a-fA-F]{3,8}$/', $_POST['modal_border_color'] ?? '') ? $_POST['modal_border_color'] : ''
-    ];
-    $modalJson = json_encode($modalConfig);
-    
-    $stmtUpd = $pdo->prepare("UPDATE saas_origins SET color_bg = ?, color_text = ?, color_primary = ?, terms_url = ?, privacy_url = ?, deny_url = ?, modal_config = ? WHERE user_id = ?");
-    $stmtUpd->execute([$c_bg, $c_txt, $c_pri, $terms, $priv, $deny, $modalJson, $userId]);
-    
-    $sync = dispatchWordPressSync($pdo, $userId);
-    die(json_encode(['success' => true]));
-}
-
-// Salvar Configurações de Privacidade e DPO
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_privacy') {
-    $privacyConfig = [
-        'dpo_email' => filter_var($_POST['dpo_email'] ?? '', FILTER_SANITIZE_EMAIL),
-        'dpo_title' => htmlspecialchars($_POST['dpo_title'] ?? 'DPO Officer'),
-        'banner_title' => htmlspecialchars($_POST['banner_title'] ?? 'Aviso de Privacidade e LGPD'),
-        'banner_text' => htmlspecialchars($_POST['banner_text'] ?? 'Utilizamos cookies essenciais e avaliativos para garantir o funcionamento seguro deste portal. Ao ignorar, você assina implicitamente que está ciente da vigilância digital.'),
-        'btn_accept' => htmlspecialchars($_POST['btn_accept'] ?? 'Aceitar Essenciais e Continuar'),
-        'btn_reject' => htmlspecialchars($_POST['btn_reject'] ?? 'Rejeitar Opcionais'),
-        'age_rating' => htmlspecialchars($_POST['age_rating'] ?? '18+'),
-        'allow_reject' => isset($_POST['allow_reject']) ? true : false,
-        'has_analytics' => isset($_POST['has_analytics']) ? true : false,
-        'has_marketing' => isset($_POST['has_marketing']) ? true : false
-    ];
-    
-    $jsonConfig = json_encode($privacyConfig);
-    
-    $stmtUpd = $pdo->prepare("UPDATE saas_origins SET privacy_config = ? WHERE user_id = ?");
-    $stmtUpd->execute([$jsonConfig, $userId]);
-    
-    $sync = dispatchWordPressSync($pdo, $userId);
-    die(json_encode(['success' => true]));
-}
-
-// Salvar Configurações do SDK WordPress e Sincronizar via Webhook (API)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_wp') {
-    $wp_url = filter_var($_POST['wp_url'] ?? '', FILTER_SANITIZE_URL);
-    if ($wp_url) { $wp_url = rtrim($wp_url, '/'); }
-    
-    $wp_rules = [
-        'global' => isset($_POST['wp_global']) ? true : false,
-        'home'   => isset($_POST['wp_home']) ? true : false,
-        'cpts'   => isset($_POST['wp_cpts']) && is_array($_POST['wp_cpts']) ? array_map('htmlspecialchars', $_POST['wp_cpts']) : []
-    ];
-    
-    $jsonRules = json_encode($wp_rules);
-    
-    // Salva na Base
-    $stmtUpd = $pdo->prepare("UPDATE saas_origins SET wp_url = ?, wp_rules = ? WHERE user_id = ?");
-    $stmtUpd->execute([$wp_url, $jsonRules, $userId]);
-    
-    // Executa o Push Global Automatizado
-    $sync = dispatchWordPressSync($pdo, $userId);
-    $pushStatus = $sync['status'];
-    $pushMsg = $sync['msg'];
-    
-    die(json_encode(['success' => true, 'push_status' => $pushStatus, 'push_msg' => $pushMsg]));
-}
-
-// Proxies de Requisição da API Grã-Mestre de Mídia (SaaS <-> WordPress Cliente)
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'load_wp_media') {
-    $page = (int)($_GET['page'] ?? 1);
-    
-    $stmtOrigin = $pdo->prepare("SELECT wp_url, api_key FROM saas_origins WHERE user_id = ? LIMIT 1");
-    $stmtOrigin->execute([$userId]);
-    $origin = $stmtOrigin->fetch(PDO::FETCH_ASSOC);
-    
-    $wp_url = rtrim($origin['wp_url'] ?? '', '/');
-    if (!$wp_url || !$origin['api_key']) {
-        die(json_encode(['success' => false, 'error' => 'Vínculo do Endpoint WordPress (aba Sincronização) não configurado ou chave de API revogada.']));
-    }
-    
-    $ch = curl_init("$wp_url/wp-json/front18/v1/media?page=$page&per_page=48");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer " . $origin['api_key']]);
-    $res = curl_exec($ch);
-    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    header('Content-Type: application/json');
-    if ($httpcode == 200 && $res) {
-        die($res); // Retorna exatamente o JSON formatado pelo Plugin
-    } else {
-        die(json_encode(['success' => false, 'error' => "Falha ao conectar via PUSH. Código HTTP $httpcode. Verifique se o plugin Front18 está instalado, atualizado e ativado no WordPress do cliente."]));
-    }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_wp_media') {
-    $protected_ids = empty($_POST['protected_ids']) ? [] : $_POST['protected_ids'];
-    if (!is_array($protected_ids)) { $protected_ids = []; }
-    
-    $clean_ids = array_values(array_unique(array_filter(array_map('intval', $protected_ids))));
-    $json_ids = json_encode($clean_ids);
-    
-    try {
-        // Tenta auto-reparar
-        $pdo->exec("ALTER TABLE saas_origins ADD COLUMN protected_media_ids LONGTEXT NULL AFTER blur_selector");
-    } catch (PDOException $e) { }
-    
-    try {
-        $stmtUpd = $pdo->prepare("UPDATE saas_origins SET protected_media_ids = ? WHERE user_id = ?");
-        $stmtUpd->execute([$json_ids, $userId]);
-        
-        // Dispara webhook pro cliente acoplar o CSS de Blur nessas TDs exatas
-        $sync = dispatchWordPressSync($pdo, $userId);
-        
-        header('Content-Type: application/json');
-        die(json_encode(['success' => true, 'total' => count($clean_ids), 'push_status' => $sync['status']]));
-    } catch (Exception $e) {
-        header('Content-Type: application/json');
-        die(json_encode(['success' => false, 'error' => 'Falha interna do BD: ' . $e->getMessage()]));
-    }
-}
 
 if (!$config) {
     $apiKey = "API_Ainda_Nao_Configurada";
@@ -720,9 +426,9 @@ $myOrigins = $myOrigins ?? [];
                         </tbody>
                     </table>
                     <div class="px-6 py-4 border-t border-slate-800 text-center text-[10px] text-slate-500 flex justify-between items-center">
-                        <button onclick="alert('Paginação granular de Big Data é restrita ao seu plano atual. Acesse a aba de Dossiês PDF para relatórios mensais completos.')" class="px-3 py-1 bg-slate-800 rounded hover:text-white transition-colors uppercase font-bold tracking-wider">Histórico Mais Antigo</button>
+                        <button onclick="FrontToast.show('warning', 'Paginação granular de Big Data é restrita ao seu plano atual. Acesse a aba de Dossiês PDF para relatórios mensais completos.')" class="px-3 py-1 bg-slate-800 rounded hover:text-white transition-colors uppercase font-bold tracking-wider">Histórico Mais Antigo</button>
                         <span>Exibindo recortes recentes de telemetria.</span>
-                        <button onclick="alert('Você já está vendo as entradas mais recentes da cadeia em tempo real.')" class="px-3 py-1 bg-slate-800 rounded hover:text-white transition-colors uppercase font-bold tracking-wider opacity-50 cursor-not-allowed">Nova Página</button>
+                        <button onclick="FrontToast.show('warning', 'Você já está vendo as entradas mais recentes da cadeia em tempo real.')" class="px-3 py-1 bg-slate-800 rounded hover:text-white transition-colors uppercase font-bold tracking-wider opacity-50 cursor-not-allowed">Nova Página</button>
                     </div>
                 </div>
             </div>
@@ -828,7 +534,7 @@ $myOrigins = $myOrigins ?? [];
                         <h4 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><i class="ph-fill ph-globe text-primary-400"></i> <?= htmlspecialchars(str_replace(['http://', 'https://'], '', $orig['domain'])) ?></h4>
                         <p class="text-[10px] text-slate-500 font-mono mb-4 uppercase tracking-wider">Token de Autoridade Criptográfica (API KEY):</p>
                         
-                        <div class="bg-slate-900 border border-slate-700/50 rounded-lg px-4 py-2 flex items-center justify-between mb-4 group cursor-pointer hover:border-primary-500/50" onclick="navigator.clipboard.writeText('<?= $orig['api_key'] ?>'); alert('Key Secreta copiada para a área de transferência!');">
+                        <div class="bg-slate-900 border border-slate-700/50 rounded-lg px-4 py-2 flex items-center justify-between mb-4 group cursor-pointer hover:border-primary-500/50" onclick="navigator.clipboard.writeText('<?= $orig['api_key'] ?>'); FrontToast.show('success', 'Key Secreta copiada para a área de transferência!');">
                             <code class="text-xs text-amber-400 font-mono truncate max-w-[200px]"><?= htmlspecialchars($orig['api_key']) ?></code>
                             <button class="text-slate-400 group-hover:text-primary-400 transition-colors"><i class="ph-bold ph-copy"></i></button>
                         </div>
@@ -940,60 +646,89 @@ $myOrigins = $myOrigins ?? [];
 
                     <!-- BLUR SETTINGS (Apenas se Media Teaser ou Custom) -->
                     <div class="glass-panel p-6 rounded-2xl">
-                        <h4 class="font-black text-white text-lg mb-1 flex items-center gap-2"><span class="bg-primary-500 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs"><i class="ph-bold ph-sliders"></i></span> Personalização do Blur (Avançado)</h4>
-                        <p class="text-[11px] text-slate-400 mb-6 pb-4 border-b border-slate-800">Defina o que receberá o efeito de desfoque e a intensidade (recomendado para Media Teaser).</p>
+                        <h4 class="font-black text-white text-lg mb-1 flex items-center gap-2"><span class="bg-primary-500 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs"><i class="ph-bold ph-sliders"></i></span> Personalização do Media Teaser</h4>
+                        <p class="text-[11px] text-slate-400 mb-6 pb-4 border-b border-slate-800">Defina o nível de censura prévia e os elementos/plugins que serão interceptados antes do cliente validar a sessão.</p>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <!-- Nível de Blur -->
+                            <!-- Coluna Esquerda: Preview e Range -->
                             <div>
-                                <label class="block text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Intensidade do Desfoque (px)</label>
+                                <label class="block text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Intensidade do Desfoque</label>
+                                
+                                <div class="relative w-full h-40 rounded-xl overflow-hidden border border-slate-700 mb-4 bg-slate-900 flex items-center justify-center group pointer-events-none">
+                                    <img src="https://images.unsplash.com/photo-1542282088-fe8426682b8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Preview Blur" class="absolute inset-0 w-full h-full object-cover transition-all" id="blur_preview_img" style="filter: blur(<?= htmlspecialchars($config['blur_amount'] ?? 25) ?>px) grayscale(50%) saturate(1.5);">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                        <i class="ph-bold ph-eye text-white/50 text-2xl mb-1"></i>
+                                        <span class="text-white text-[10px] font-bold tracking-widest uppercase shadow-black drop-shadow-md">Preview Teaser</span>
+                                    </div>
+                                </div>
+
                                 <div class="flex items-center gap-4">
-                                    <input type="range" name="blur_amount" min="5" max="50" value="<?= htmlspecialchars($config['blur_amount'] ?? 25) ?>" 
+                                    <input type="range" min="5" max="50" value="<?= htmlspecialchars($config['blur_amount'] ?? 25) ?>" 
                                         class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                                        oninput="document.getElementById('blur_amount_display').innerText = this.value + 'px'">
+                                        oninput="document.getElementById('blur_amount_display_input').value = this.value; document.getElementById('blur_amount_display').innerText = this.value + 'px'; document.getElementById('blur_preview_img').style.filter = 'blur(' + this.value + 'px) grayscale(50%) saturate(1.5)';">
+                                    <!-- Hidden Input required for the Backend Save -->
+                                    <input type="hidden" name="blur_amount" id="blur_amount_display_input" value="<?= htmlspecialchars($config['blur_amount'] ?? 25) ?>">
                                     <div class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 font-mono text-emerald-400 font-bold shrink-0" id="blur_amount_display">
                                         <?= htmlspecialchars($config['blur_amount'] ?? 25) ?>px
                                     </div>
                                 </div>
-                                <p class="text-[10px] text-slate-500 mt-2">Dica: Um blur de 20-30px costuma ser ideal para ocultar mídias (+18) sem parecer uma mancha.</p>
+                                <p class="text-[10px] text-slate-500 mt-2">Dica: 20-30px costuma ser ideal para ocultar intimidade (+18) retendo a curiosidade visual.</p>
                             </div>
 
-                            <!-- Seletor CSS via Checkboxes -->
+                            <!-- Coluna Direita: Seletores -->
                             <div>
-                                <label class="block text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">O que você deseja ocultar?</label>
-                                <?php $current_selector = !empty($config['blur_selector']) ? $config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]'; ?>
+                                <label class="block text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Mídia Alvo (Interceptação)</label>
+                                <?php 
+                                    $current_selector = !empty($config['blur_selector']) ? $config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]'; 
+                                    $mode = 'custom';
+                                    if ($current_selector === 'img, video, iframe, [data-front18="locked"]') $mode = 'default';
+                                    $elementor_selector = 'img, video, iframe, [data-front18="locked"], .elementor-loop-container article, .elementor-widget-loop-builder .elementor-post';
+                                    if ($current_selector === $elementor_selector) $mode = 'elementor';
+                                ?>
                                 
-                                <div class="grid grid-cols-2 gap-3 mb-2" id="blur_checkbox_group">
-                                    <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
-                                        <input type="checkbox" value="img" class="w-4 h-4 text-emerald-500 bg-slate-800 border-slate-600 rounded cursor-pointer" <?= strpos($current_selector, 'img') !== false ? 'checked' : '' ?>>
-                                        <span class="text-sm text-slate-200">📸 Imagens</span>
+                                <div class="space-y-3 mb-4">
+                                    <!-- Option 1 -->
+                                    <label class="flex p-3 border rounded-xl cursor-pointer transition-all <?= $mode === 'default' ? 'bg-emerald-900/10 border-emerald-500' : 'bg-slate-900 border-slate-700 hover:border-slate-500' ?>" onclick="selectBlurPreset('default', this)">
+                                        <input type="radio" name="_blur_preset" value="default" class="sr-only" <?= $mode === 'default' ? 'checked' : '' ?>>
+                                        <div class="flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="preset-title text-sm font-bold <?= $mode === 'default' ? 'text-emerald-400' : 'text-slate-300' ?> flex items-center gap-2"><i class="ph-bold ph-image-square"></i> Nativo (Recomendado)</h5>
+                                                <i class="preset-icon ph-fill ph-check-circle text-emerald-500 <?= $mode === 'default' ? 'opacity-100' : 'opacity-0' ?>"></i>
+                                            </div>
+                                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Intercepta &lt;img&gt; padrão, &lt;video&gt; do WordPress e iframe (YouTube)</p>
+                                        </div>
                                     </label>
                                     
-                                    <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
-                                        <input type="checkbox" value="video" class="w-4 h-4 text-emerald-500 bg-slate-800 border-slate-600 rounded cursor-pointer" <?= strpos($current_selector, 'video') !== false ? 'checked' : '' ?>>
-                                        <span class="text-sm text-slate-200">🎬 Vídeos (HTML5)</span>
+                                    <!-- Option 2 -->
+                                    <label class="flex p-3 border rounded-xl cursor-pointer transition-all <?= $mode === 'elementor' ? 'bg-emerald-900/10 border-emerald-500' : 'bg-slate-900 border-slate-700 hover:border-slate-500' ?>" onclick="selectBlurPreset('elementor', this)">
+                                        <input type="radio" name="_blur_preset" value="elementor" class="sr-only" <?= $mode === 'elementor' ? 'checked' : '' ?>>
+                                        <div class="flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="preset-title text-sm font-bold <?= $mode === 'elementor' ? 'text-emerald-400' : 'text-slate-300' ?> flex items-center gap-2"><i class="ph-bold ph-squares-four"></i> Especial Elementor Pro</h5>
+                                                <i class="preset-icon ph-fill ph-check-circle text-emerald-500 <?= $mode === 'elementor' ? 'opacity-100' : 'opacity-0' ?>"></i>
+                                            </div>
+                                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Blinda nativos + Injeções do Elementor Loop Grid & Post Carousels</p>
+                                        </div>
                                     </label>
                                     
-                                    <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
-                                        <input type="checkbox" value="iframe" class="w-4 h-4 text-emerald-500 bg-slate-800 border-slate-600 rounded cursor-pointer" <?= strpos($current_selector, 'iframe') !== false ? 'checked' : '' ?>>
-                                        <span class="text-sm text-slate-200">🌐 iFrames (Youtube, Vimeo)</span>
-                                    </label>
-
-                                    <label class="flex items-center gap-2 p-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
-                                        <input type="checkbox" value="[data-front18=&quot;locked&quot;]" class="w-4 h-4 text-emerald-500 bg-slate-800 border-slate-600 rounded cursor-pointer" <?= strpos($current_selector, '[data-front18="locked"]') !== false ? 'checked' : '' ?>>
-                                        <span class="text-[11px] text-slate-200 leading-tight">🔒 Tag Oculta (Avançado)</span>
+                                    <!-- Option 3 -->
+                                    <label class="flex p-3 border rounded-xl cursor-pointer transition-all <?= $mode === 'custom' ? 'bg-amber-900/10 border-amber-500' : 'bg-slate-900 border-slate-700 hover:border-slate-500' ?>" onclick="selectBlurPreset('custom', this)">
+                                        <input type="radio" name="_blur_preset" value="custom" class="sr-only" <?= $mode === 'custom' ? 'checked' : '' ?>>
+                                        <div class="flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="preset-title text-sm font-bold <?= $mode === 'custom' ? 'text-amber-400' : 'text-slate-300' ?> flex items-center gap-2"><i class="ph-bold ph-code"></i> Desenvolvedor</h5>
+                                                <i class="preset-icon ph-fill ph-check-circle text-amber-500 <?= $mode === 'custom' ? 'opacity-100' : 'opacity-0' ?>"></i>
+                                            </div>
+                                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Abre console para digitar Classes CSS ou Elementos personalizados.</p>
+                                        </div>
                                     </label>
                                 </div>
-                                <p class="text-[10px] text-slate-500 mt-1 mb-3">Marque com "Check" o que deseja borrar. Desmarcar todos fará as portas escancarar.</p>
 
-                                <details class="text-sm">
-                                    <summary class="text-xs text-primary-400 cursor-pointer mb-2">Engenheiro / Desenvolvedor (Seletor Personalizado)</summary>
-                                    <input type="text" id="custom_blur_input" class="w-full bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500 font-mono text-xs" 
-                                           placeholder="Ex: .exclusivo-vip, section#gallery" value="<?= strpos($current_selector, '.') !== false || strpos($current_selector, '#') !== false ? htmlspecialchars($current_selector) : '' ?>">
-                                    <p class="text-[9px] text-slate-500 mt-1">Isso sobrescreve ou soma-se aos checkboxes.</p>
-                                </details>
-
-                                <input type="hidden" id="blur_selector_input" name="blur_selector" value="<?= htmlspecialchars($current_selector) ?>">
+                                <div id="custom_blur_area" class="<?= $mode !== 'custom' ? 'hidden' : '' ?> animate-[fadeIn_0.3s_ease]">
+                                    <label class="block text-[10px] text-amber-500/80 mb-2 font-bold uppercase tracking-widest"><i class="ph-bold ph-terminal-window"></i> Query Selector Alvo:</label>
+                                    <textarea name="blur_selector" id="blur_selector_input" rows="3" class="w-full bg-slate-950 border border-slate-800 text-slate-300 rounded-xl p-4 focus:outline-none focus:border-amber-500/50 font-mono text-xs custom-scrollbar leading-relaxed resize-none shadow-inner"><?= htmlspecialchars($current_selector) ?></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1206,7 +941,7 @@ $myOrigins = $myOrigins ?? [];
                             btn.innerHTML = '<i class="ph-bold ph-warning text-lg"></i> <span>Falha ao Salvar</span>';
                             btn.classList.remove('bg-primary-600', 'hover:bg-primary-500');
                             btn.classList.add('bg-red-600', 'shadow-red-500/20');
-                            alert("Falha de Integridade WAF: " + err.message);
+                            FrontToast.show('error', "Falha de Integridade WAF: " + err.message);
                             setTimeout(() => {
                                 btn.innerHTML = originalHTML;
                                 btn.classList.add('bg-primary-600', 'hover:bg-primary-500');
@@ -1237,63 +972,52 @@ $myOrigins = $myOrigins ?? [];
                 <form id="frmAppearance" class="space-y-6">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         
-                        <!-- Coluna 1: Cores -->
-                        <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10">
-                            <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-palette text-pink-400"></i> Cores (Theme)</h4>
+                        <!-- Coluna UNIFICADA: Identidade Visual & Cores -->
+                        <div class="lg:col-span-2 glass-panel p-8 rounded-2xl border border-slate-800 relative z-10 bg-gradient-to-br from-slate-900/90 to-[#0a0f18] shadow-lg">
+                            <h4 class="font-bold text-white flex items-center gap-2 mb-2"><i class="ph-bold ph-palette text-pink-400 text-xl"></i> Identidade Visual do Ecossistema Front18</h4>
+                            <p class="text-[10px] text-slate-400 mb-8 max-w-2xl uppercase tracking-widest">A paleta definida aqui será renderizada instantaneamente nos Banners LGPD, Formulários e nas Validações Biométricas dentro do seu domínio.</p>
                             
-                            <div class="space-y-5">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cor do Fundo (Background)</label>
-                                    <div class="flex items-center gap-3">
-                                        <input type="color" name="color_bg" value="<?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?>" class="w-10 h-10 rounded cursor-pointer border-0 p-0 bg-transparent">
-                                        <div class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-300">
-                                            <?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- BG COLOR -->
+                                <div class="relative group cursor-pointer">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 pointer-events-none">Cor Base do Fundo</label>
+                                    <div class="flex items-center gap-4 p-3 bg-slate-950/50 border border-slate-800 rounded-xl hover:border-slate-600 transition-all">
+                                        <div class="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-slate-700 shadow-inner group-hover:scale-105 transition-transform">
+                                            <input type="color" name="color_bg" value="<?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?>" class="absolute -top-5 -left-5 w-24 h-24 cursor-pointer scale-150">
                                         </div>
-                                    </div>
-                                    <p class="text-[10px] text-slate-500 mt-1">Recomendamos tons escuros para o "Wow Effect" da câmera.</p>
-                                </div>
-                                
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cor do Texto Principal</label>
-                                    <div class="flex items-center gap-3">
-                                        <input type="color" name="color_text" value="<?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?>" class="w-10 h-10 rounded cursor-pointer border-0 p-0 bg-transparent">
-                                        <div class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-300">
-                                            <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?>
+                                        <div class="flex-1">
+                                            <div class="text-[9px] text-slate-500 font-bold uppercase mb-0.5">Background</div>
+                                            <span class="text-xs font-mono text-white tracking-wider color-val-preview"><?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?></span>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cor Primária (Botões e Destaques)</label>
-                                    <div class="flex items-center gap-3">
-                                        <input type="color" name="color_primary" value="<?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?>" class="w-10 h-10 rounded cursor-pointer border-0 p-0 bg-transparent">
-                                        <div class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-300">
-                                            <?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?>
+                                <!-- TEXT COLOR -->
+                                <div class="relative group cursor-pointer">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 pointer-events-none">Tipografia (Contraste)</label>
+                                    <div class="flex items-center gap-4 p-3 bg-slate-950/50 border border-slate-800 rounded-xl hover:border-slate-600 transition-all">
+                                        <div class="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-slate-700 shadow-inner group-hover:scale-105 transition-transform">
+                                            <input type="color" name="color_text" value="<?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?>" class="absolute -top-5 -left-5 w-24 h-24 cursor-pointer scale-150">
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="text-[9px] text-slate-500 font-bold uppercase mb-0.5">Text & Icons</div>
+                                            <span class="text-xs font-mono text-white tracking-wider color-val-preview"><?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?></span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Coluna 2: URLs e Redirecionamentos -->
-                        <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10">
-                            <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-link text-indigo-400"></i> URLs Legais e Saída</h4>
-                            
-                            <div class="space-y-5">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Página de Termos de Uso</label>
-                                    <input type="url" name="terms_url" placeholder="https://seusite.com/termos" value="<?= htmlspecialchars($config['terms_url'] ?? '') ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all font-mono">
-                                </div>
                                 
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Política de Privacidade</label>
-                                    <input type="url" name="privacy_url" placeholder="https://seusite.com/privacidade" value="<?= htmlspecialchars($config['privacy_url'] ?? '') ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all font-mono">
-                                </div>
-                                
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 text-red-400">Redirecionamento se Recusar (Saída Segura)</label>
-                                    <input type="url" name="deny_url" placeholder="https://google.com" value="<?= htmlspecialchars($config['deny_url'] ?? '') ?>" class="w-full bg-slate-900 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all font-mono">
-                                    <p class="text-[10px] text-slate-500 mt-1">Visitante menor de idade será ejetado para este site automaticamente.</p>
+                                <!-- PRIMARY COLOR -->
+                                <div class="relative group cursor-pointer">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 pointer-events-none">Cor de Destaque / Neon</label>
+                                    <div class="flex items-center gap-4 p-3 bg-slate-950/50 border border-slate-800 rounded-xl shadow-[0_0_20px_color-mix(in_srgb,<?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?>_20%,transparent)] hover:shadow-[0_0_30px_color-mix(in_srgb,<?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?>_40%,transparent)] transition-all">
+                                        <div class="relative w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-slate-600 shadow-inner group-hover:scale-105 transition-transform">
+                                            <input type="color" name="color_primary" value="<?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?>" class="absolute -top-5 -left-5 w-24 h-24 cursor-pointer scale-150">
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="text-[9px] text-slate-500 font-bold uppercase mb-0.5">Primary Accent</div>
+                                            <span class="text-xs font-mono text-white tracking-wider color-val-preview"><?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?></span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1315,66 +1039,73 @@ $myOrigins = $myOrigins ?? [];
                         <!-- Coluna 3 Esquerda Flex: Textos & Câmera -->
                         <div class="flex flex-col gap-6">
                             
-                            <!-- Box: Textos do Modal -->
-                            <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10 w-full shadow-lg">
-                                <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-text-t text-purple-400"></i> Textura Escrita (Age Gate)</h4>
-                                <div class="space-y-4">
+                            <!-- Box: Textos do Modal & Escape -->
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10 w-full shadow-lg overflow-hidden">
+                                <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><i class="ph-fill ph-text-t text-9xl text-purple-500"></i></div>
+                                <h4 class="font-bold text-white mb-6 flex items-center gap-2 relative z-10"><i class="ph-bold ph-text-t text-purple-400"></i> Localização Textual (Age Gate)</h4>
+                                <div class="space-y-4 relative z-10">
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Título de Bloqueio</label>
-                                        <input type="text" id="live_modal_title" name="modal_title" value="<?= htmlspecialchars($mTitle) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-mono">
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Título de Bloqueio</label>
+                                        <input type="text" id="live_modal_title" name="modal_title" value="<?= htmlspecialchars($mTitle) ?>" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-all font-mono">
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Breve Descrição Legal</label>
-                                        <textarea id="live_modal_desc" name="modal_desc" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-mono"><?= htmlspecialchars($mDesc) ?></textarea>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Breve Descrição Legal</label>
+                                        <textarea id="live_modal_desc" name="modal_desc" rows="2" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-purple-500 transition-all font-mono custom-scrollbar"><?= htmlspecialchars($mDesc) ?></textarea>
                                     </div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 text-emerald-400">Botão Positivo</label>
-                                            <input type="text" id="live_modal_btn_yes" name="modal_btn_yes" value="<?= htmlspecialchars($mYes) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all font-mono">
+                                            <label class="block text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Ação Positiva (Entrar)</label>
+                                            <input type="text" id="live_modal_btn_yes" name="modal_btn_yes" value="<?= htmlspecialchars($mYes) ?>" class="w-full bg-emerald-900/10 border border-emerald-900/50 rounded-lg px-4 py-2.5 text-sm text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all font-mono">
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Botão Saída / Negativo</label>
-                                            <input type="text" id="live_modal_btn_no" name="modal_btn_no" value="<?= htmlspecialchars($mNo) ?>" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-400 focus:outline-none focus:border-slate-500 transition-all font-mono">
+                                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ação Negativa (Sair)</label>
+                                            <input type="text" id="live_modal_btn_no" name="modal_btn_no" value="<?= htmlspecialchars($mNo) ?>" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-400 focus:outline-none focus:border-slate-500 transition-all font-mono">
                                         </div>
+                                    </div>
+                                    <div class="pt-4 border-t border-slate-800/50 mt-4">
+                                        <label class="block text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1 flex items-center gap-1"><i class="ph-bold ph-warning-circle"></i> Destino da Fuga (Deny URL)</label>
+                                        <input type="url" name="deny_url" placeholder="https://google.com" value="<?= htmlspecialchars($config['deny_url'] ?? '') ?>" class="w-full bg-rose-950/20 border border-rose-900/30 rounded-lg px-4 py-3 text-[11px] text-rose-200 focus:outline-none focus:border-rose-500 transition-all font-mono placeholder-rose-900/50">
+                                        <p class="text-[9px] text-slate-500 mt-1 uppercase">Onde redirecionar os menores de idade rejeitados pela IA?</p>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Box: Arquitetura, Lentes e Borda do Modal -->
-                            <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10 w-full shadow-lg">
-                                <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-camera text-primary-400"></i> Estrutura & Lentes Fotográficas</h4>
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-800 relative z-10 w-full shadow-lg overflow-hidden">
+                                <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><i class="ph-fill ph-camera text-9xl text-indigo-500"></i></div>
+                                <h4 class="font-bold text-white mb-6 flex items-center gap-2 relative z-10"><i class="ph-bold ph-camera text-indigo-400"></i> Geometria e Ótica</h4>
                                 
-                                <div class="space-y-5">
+                                <div class="space-y-5 relative z-10">
                                     <!-- Câmera Shape Visual Selection -->
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Recorte Físico da Câmera (Avatar)</label>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Recorte Físico da Câmera (Avatar)</label>
                                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                             <label class="cursor-pointer group relative">
                                                 <input type="radio" name="cam_shape" value="circle" class="peer absolute opacity-0" <?= $camShape === 'circle' ? 'checked' : '' ?>>
-                                                <div class="p-3 border border-slate-700 rounded-xl bg-slate-900 peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
-                                                    <div class="w-10 h-10 rounded-full border-2 border-slate-600 peer-checked:border-primary-400"></div>
-                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-primary-400">Sphere</span>
+                                                <div class="p-3 border border-slate-700/50 rounded-xl bg-slate-900/50 peer-checked:border-indigo-500 peer-checked:bg-indigo-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
+                                                    <div class="w-10 h-10 rounded-full border-2 border-slate-600 peer-checked:border-indigo-400"></div>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-indigo-400">Sphere</span>
                                                 </div>
                                             </label>
                                             <label class="cursor-pointer group relative">
                                                 <input type="radio" name="cam_shape" value="squircle" class="peer absolute opacity-0" <?= $camShape === 'squircle' ? 'checked' : '' ?>>
-                                                <div class="p-3 border border-slate-700 rounded-xl bg-slate-900 peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
-                                                    <div class="w-10 h-10 rounded-[12px] border-2 border-slate-600 peer-checked:border-primary-400"></div>
-                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-primary-400">Squircle</span>
+                                                <div class="p-3 border border-slate-700/50 rounded-xl bg-slate-900/50 peer-checked:border-indigo-500 peer-checked:bg-indigo-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
+                                                    <div class="w-10 h-10 rounded-[12px] border-2 border-slate-600 peer-checked:border-indigo-400"></div>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-indigo-400">Squircle</span>
                                                 </div>
                                             </label>
                                             <label class="cursor-pointer group relative">
                                                 <input type="radio" name="cam_shape" value="square" class="peer absolute opacity-0" <?= $camShape === 'square' ? 'checked' : '' ?>>
-                                                <div class="p-3 border border-slate-700 rounded-xl bg-slate-900 peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
-                                                    <div class="w-10 h-10 rounded-sm border-2 border-slate-600 peer-checked:border-primary-400"></div>
-                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-primary-400">Reto</span>
+                                                <div class="p-3 border border-slate-700/50 rounded-xl bg-slate-900/50 peer-checked:border-indigo-500 peer-checked:bg-indigo-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
+                                                    <div class="w-10 h-10 rounded-sm border-2 border-slate-600 peer-checked:border-indigo-400"></div>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-indigo-400">Reto</span>
                                                 </div>
                                             </label>
                                             <label class="cursor-pointer group relative">
                                                 <input type="radio" name="cam_shape" value="rectangle" class="peer absolute opacity-0" <?= $camShape === 'rectangle' ? 'checked' : '' ?>>
-                                                <div class="p-3 border border-slate-700 rounded-xl bg-slate-900 peer-checked:border-primary-500 peer-checked:bg-primary-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
-                                                    <div class="w-[45px] h-8 rounded-md border-2 border-slate-600 peer-checked:border-primary-400"></div>
-                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-primary-400">Lands</span>
+                                                <div class="p-3 border border-slate-700/50 rounded-xl bg-slate-900/50 peer-checked:border-indigo-500 peer-checked:bg-indigo-500/10 peer-checked:shadow-[0_0_15px_rgba(99,102,241,0.2)] flex flex-col items-center justify-center gap-2 transition-all">
+                                                    <div class="w-[45px] h-8 rounded-md border-2 border-slate-600 peer-checked:border-indigo-400"></div>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-500 peer-checked:text-indigo-400">Lands</span>
                                                 </div>
                                             </label>
                                         </div>
@@ -1382,42 +1113,45 @@ $myOrigins = $myOrigins ?? [];
                                     
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aro da Lente (Highlight)</label>
+                                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><i class="ph-bold ph-aperture"></i> Lente (Highlight)</label>
                                             <div class="flex items-center gap-2 relative">
                                                 <input type="color" id="live_cam_border_color" name="cam_border_color" value="<?= htmlspecialchars($camBorderColor) ?>" class="absolute top-0 left-0 w-10 h-10 opacity-0 cursor-pointer" oninput="document.getElementById('live_cam_border_hex').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
                                                 <div id="live_cam_border_preview" class="w-10 h-10 rounded-lg border border-slate-700 pointer-events-none shrink-0" style="background-color: <?= htmlspecialchars($camBorderColor) ?>;"></div>
-                                                <input type="text" id="live_cam_border_hex" value="<?= htmlspecialchars($camBorderColor) ?>" placeholder="#HEX" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white uppercase focus:outline-none font-mono" oninput="document.getElementById('live_cam_border_color').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
+                                                <input type="text" id="live_cam_border_hex" value="<?= htmlspecialchars($camBorderColor) ?>" placeholder="#HEX" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-[11px] text-white uppercase focus:outline-none font-mono" oninput="document.getElementById('live_cam_border_color').value = this.value; document.getElementById('live_cam_border_preview').style.backgroundColor = this.value;">
                                             </div>
-                                            <label class="flex items-center gap-2 cursor-pointer mt-3 bg-slate-900 px-2 py-1.5 rounded-lg border border-slate-800 hover:border-primary-500/50 transition-colors">
-                                                <input type="checkbox" id="live_cam_glow" name="cam_glow" value="1" <?= $camGlow ? 'checked' : '' ?> class="w-3 h-3 text-primary-500 rounded bg-slate-800">
-                                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Laser/Glow Emissor</span>
+                                            <label class="flex items-center gap-2 cursor-pointer mt-3 bg-slate-900/50 px-2 py-2 rounded-lg border border-slate-800 hover:border-indigo-500/50 transition-colors">
+                                                <input type="checkbox" id="live_cam_glow" name="cam_glow" value="1" <?= $camGlow ? 'checked' : '' ?> class="w-3 h-3 text-indigo-500 rounded bg-slate-800">
+                                                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Laser/Glow Emissor</span>
                                             </label>
                                         </div>
                                         
                                         <div>
-                                            <label class="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Borda Externa Modal <span class="bg-indigo-500/20 text-indigo-400 px-1 py-0.5 rounded text-[8px]">New</span></label>
+                                            <label class="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1"><i class="ph-bold ph-frame-corners"></i> Borda do Age Gate</label>
                                             <div class="flex items-center gap-2 relative">
                                                 <input type="color" id="live_modal_border_color" name="modal_border_color" value="<?= htmlspecialchars($modalBorderColor ?: '#ffffff') ?>" class="absolute top-0 left-0 w-10 h-10 opacity-0 cursor-pointer" oninput="document.getElementById('live_modal_border_hex').value = this.value; document.getElementById('live_modal_border_preview').style.backgroundColor = this.value; if(this.value){document.getElementById('mock_modal').style.borderColor=this.value;}else{document.getElementById('mock_modal').style.borderColor='rgba(255,255,255,0.08)';}">
                                                 <div id="live_modal_border_preview" class="w-10 h-10 rounded-lg border border-slate-700 pointer-events-none shrink-0" style="background-color: <?= htmlspecialchars($modalBorderColor ?: 'transparent') ?>;">
-                                                    <?= !$modalBorderColor ? '<div class="w-full h-full flex items-center justify-center text-slate-500 text-xs"><i class="ph-bold ph-prohibit"></i></div>' : '' ?> 
+                                                    <?= !$modalBorderColor ? '<div class="w-full h-full flex items-center justify-center text-slate-600 text-xs"><i class="ph-bold ph-prohibit"></i></div>' : '' ?> 
                                                 </div>
-                                                <input type="text" id="live_modal_border_hex" value="<?= htmlspecialchars($modalBorderColor) ?>" placeholder="VAZIO = PADRÃO" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white uppercase focus:outline-none font-mono" oninput="document.getElementById('live_modal_border_color').value = this.value; document.getElementById('live_modal_border_preview').style.backgroundColor = this.value  || 'transparent'; if(this.value){document.getElementById('mock_modal').style.borderColor=this.value;}">
+                                                <input type="text" id="live_modal_border_hex" value="<?= htmlspecialchars($modalBorderColor) ?>" placeholder="VAZIO = PADRÃO" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-2 py-2 text-[10px] text-white uppercase focus:outline-none font-mono" oninput="document.getElementById('live_modal_border_color').value = this.value; document.getElementById('live_modal_border_preview').style.backgroundColor = this.value  || 'transparent'; if(this.value){document.getElementById('mock_modal').style.borderColor=this.value;}">
                                             </div>
-                                            <p class="text-[9px] text-slate-500 mt-2 font-mono">Use cores neon (#FF00FF) para acoplar um portal gamer ou deixe vazio para borda glass nativa.</p>
+                                            <p class="text-[9px] text-slate-500 mt-2 font-mono">Apague p/ usar borda NATIVA.</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Coluna 4: Live Preview do Modal -->
-                        <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden bg-slate-950">
-                            <div class="absolute inset-0 bg-slate-900/50" id="preview_bg"></div>
-                            <h4 class="absolute top-4 left-6 font-bold text-slate-400 text-xs uppercase tracking-widest flex items-center gap-2"><i class="ph-bold ph-eye"></i> Simulação na Tela do Cliente</h4>
+                        <!-- Coluna 4: Live Preview do Ecossistema -->
+                        <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden bg-black/40 shadow-inner min-h-[500px]">
+                            <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.05)_0%,transparent_70%)]" id="preview_bg"></div>
+                            <h4 class="absolute top-4 left-6 font-bold text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2"><i class="ph-bold ph-magic-wand text-primary-400"></i> Component View (CSS Rendering)</h4>
+                            
+                            <!-- Container Flex para evitar sobreposição -->
+                            <div class="w-full h-full flex flex-col items-center justify-start gap-8 relative z-10 py-8 overflow-y-auto max-h-[700px]">
                             
                             <!-- O Mock do Modal -->
                             <?php $tempMockBorder = $modalBorderColor ?: "rgba(255,255,255,0.08)"; ?>
-                            <div id="mock_modal" style="background: <?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?>; border: 2px solid <?= htmlspecialchars($tempMockBorder) ?>; color: <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?>;" class="relative z-10 p-[48px_40px] rounded-[24px] text-center w-full max-w-[460px] shadow-[0_0_40px_rgba(0,0,0,0.5)] scale-[0.75] origin-top transition-all mt-4 font-sans">
+                            <div id="mock_modal" style="zoom: 0.70; background: <?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?>; border: 2px solid <?= htmlspecialchars($tempMockBorder) ?>; color: <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?>;" class="relative z-10 p-[48px_40px] rounded-[24px] text-center w-full max-w-[460px] shadow-[0_0_40px_rgba(0,0,0,0.5)] transition-all font-sans shrink-0">
                                 <div id="mock_badge" style="background: color-mix(in srgb, <?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?> 15%, transparent); color: <?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?>; border: 1px solid color-mix(in srgb, <?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?> 30%, transparent);" class="inline-flex items-center justify-center px-[14px] py-[6px] rounded-[20px] text-[11px] font-bold tracking-[0.5px] uppercase mb-[24px]">
                                     <img src="/public/img/favicon.png" style="width:16px; height:16px; margin-right:6px; object-fit:contain; filter:brightness(2) drop-shadow(0 0 2px rgba(255,255,255,0.5));" onerror="this.style.display='none'">
                                     RESTRIÇÃO DE IDADE
@@ -1447,6 +1181,41 @@ $myOrigins = $myOrigins ?? [];
                                     <span id="mock_footer_badge" style="background: color-mix(in srgb, <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?> 10%, transparent); border-color: color-mix(in srgb, <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?> 15%, transparent); opacity: 0.8;" class="inline-block mt-[8px] px-[8px] py-[4px] border rounded-[6px] font-mono text-[10px]">Contrato Base: v1.0-2026</span>
                                 </div>
                             </div>
+
+                            <!-- O Mock REAL do Banner DPO (Estilo Front18 SDK Card) -->
+                            <div id="mock_dpo" style="zoom: 0.75; background: <?= htmlspecialchars($config['color_bg'] ?? '#0f172a') ?>; color: <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?>; border: 1px solid color-mix(in srgb, <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?> 10%, transparent);" class="relative z-10 w-full max-w-[340px] p-[24px] rounded-[16px] shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] flex flex-col font-sans transition-all shrink-0">
+                                <div class="flex items-center justify-between mb-[12px]">
+                                    <div class="font-[800] text-[14px] flex items-center gap-[6px]">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                        Aviso de Privacidade LGPD
+                                    </div>
+                                    <div class="flex items-center gap-[8px]">
+                                        <div style="opacity:0.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+                                        <div class="flex items-center justify-center w-[28px] h-[28px] rounded-[6px] bg-yellow-500/15 border-[2px] border-yellow-500 text-yellow-500 font-[900] text-[10px] tracking-[-0.5px]">18</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-[12px] leading-[1.6] opacity-70 mb-[16px]">
+                                    Nosso Cérebro processa dados para finalidades ligadas ao fornecimento da plataforma e segurança antifraude.
+                                </div>
+                                
+                                <div class="flex flex-col gap-[8px]">
+                                    <button id="mock_dpo_btn_yes" type="button" style="background: <?= htmlspecialchars($config['color_primary'] ?? '#6366f1') ?>; color: #ffffff;" class="w-[100%] p-[12px] rounded-[8px] text-[12px] font-[600] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+                                        Autorizar & Continuar
+                                    </button>
+                                    <button id="mock_dpo_btn_no" type="button" style="border: 1px solid color-mix(in srgb, <?= htmlspecialchars($config['color_text'] ?? '#f8fafc') ?> 20%, transparent); opacity:0.6;" class="w-[100%] p-[12px] rounded-[8px] text-[12px] font-[600] text-inherit bg-transparent">
+                                        Apenas Essenciais
+                                    </button>
+                                </div>
+                                
+                                <div class="flex justify-center gap-[16px] mt-[16px] text-[10px] opacity-50">
+                                    <span style="color:inherit;text-decoration:none">Denúncia DPO</span>
+                                    <span style="color:inherit;text-decoration:none">Políticas</span>
+                                    <span style="color:inherit;text-decoration:none">Termos</span>
+                                </div>
+                            </div>
+                            
+                            </div> <!-- Fecha Flex Wrapper -->
                         </div>
                     </div>
 
@@ -1462,10 +1231,12 @@ $myOrigins = $myOrigins ?? [];
                 // Atualiza o display das cores quando muda e atualiza o preview visual
                 document.querySelectorAll('input[type="color"]').forEach(input => {
                     input.addEventListener('input', (e) => {
-                        e.target.nextElementSibling.textContent = e.target.value;
+                        const displaySpan = e.target.closest('.group')?.querySelector('.color-val-preview');
+                        if(displaySpan) displaySpan.textContent = e.target.value;
                         const v = e.target.value;
                         if (e.target.name === 'color_bg') {
                             document.getElementById('mock_modal').style.background = v;
+                            document.getElementById('mock_dpo').style.background = v;
                         } else if (e.target.name === 'color_text') {
                             document.getElementById('mock_modal').style.color = v;
                             document.getElementById('mock_btn_yes').style.background = `color-mix(in srgb, ${v} 20%, transparent)`;
@@ -1479,6 +1250,10 @@ $myOrigins = $myOrigins ?? [];
                             document.getElementById('mock_footer').style.borderTopColor = `color-mix(in srgb, ${v} 10%, transparent)`;
                             document.getElementById('mock_footer_badge').style.background = `color-mix(in srgb, ${v} 10%, transparent)`;
                             document.getElementById('mock_footer_badge').style.borderColor = `color-mix(in srgb, ${v} 15%, transparent)`;
+                            // DPO Elements
+                            document.getElementById('mock_dpo').style.color = v;
+                            document.getElementById('mock_dpo').style.borderColor = `color-mix(in srgb, ${v} 10%, transparent)`;
+                            document.getElementById('mock_dpo_btn_no').style.borderColor = `color-mix(in srgb, ${v} 20%, transparent)`;
                         } else if (e.target.name === 'color_primary') {
                             document.getElementById('mock_badge').style.color = v;
                             document.getElementById('mock_badge').style.background = `color-mix(in srgb, ${v} 15%, transparent)`;
@@ -1486,6 +1261,8 @@ $myOrigins = $myOrigins ?? [];
                             document.getElementById('mock_link_help').style.color = v;
                             document.getElementById('mock_link_terms').style.color = v;
                             document.getElementById('mock_link_privacy').style.color = v;
+                            // DPO Elements
+                            document.getElementById('mock_dpo_btn_yes').style.background = v;
                         }
                     });
                 });
@@ -1518,7 +1295,7 @@ $myOrigins = $myOrigins ?? [];
                     .then(data => {
                         btn.innerHTML = '<i class="ph-bold ph-check text-lg"></i> <span>Design Publicado!</span>';
                         btn.classList.remove('bg-pink-600', 'hover:bg-pink-500');
-                        btn.classList.add('bg-emerald-600', 'shadow-emerald-500/20');
+btn.classList.add('bg-emerald-600', 'shadow-emerald-500/20');
                         
                         setTimeout(() => {
                             btn.innerHTML = originalHTML;
@@ -1531,21 +1308,42 @@ $myOrigins = $myOrigins ?? [];
                 </script>
             </div>
 
-            <!-- ====== TAB PRIVACY E LGPD ====== -->
+            <!-- TAB: PORTAL LGPD & COOKIES -->
             <div id="tab-privacy" class="tab-content max-w-5xl mx-auto">
-                <div class="glass-panel p-8 rounded-2xl relative overflow-hidden mb-8 border border-emerald-500/20">
-                    <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 pointer-events-none"></div>
-                    <div class="flex items-start gap-6 relative">
-                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
-                            <i class="ph-bold ph-cookie text-3xl text-white"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-2xl font-bold text-white mb-2 tracking-tight">Compliance Legal (Painel DPO)</h3>
-                            <p class="text-sm text-slate-400 max-w-2xl leading-relaxed">A lei exige consentimento claro para coleta de logs. Configure aqui o Banner de Cookies Estrito que garantirá sua isenção e habilitará a Central de Preferências de Privacidade (Flutuante).</p>
+                
+                <!-- HEADER & MATURITY SCORE -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="md:col-span-2 glass-panel p-8 rounded-2xl relative overflow-hidden border border-emerald-500/20">
+                        <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 pointer-events-none"></div>
+                        <div class="flex items-start gap-6 relative">
+                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+                                <i class="ph-bold ph-scales text-3xl text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-bold text-white mb-2 tracking-tight">Portal DPO & Compliance (LGPD)</h3>
+                                <p class="text-sm text-slate-400 max-w-2xl leading-relaxed mb-4">Painel de gerenciamento corporativo alinhado com a Lei nº 13.709/2018 (LGPD), Marco Civil da Internet e resoluções da ANPD aplicáveis ao ecossistema Front18.</p>
+
+                                <details class="group cursor-pointer">
+                                    <summary class="text-[10px] font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-1 hover:text-emerald-300 transition w-fit list-none">
+                                        <i class="ph-bold ph-info"></i> Como o Algoritmo Funciona?
+                                        <i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform ml-1 text-slate-500"></i>
+                                    </summary>
+                                    <div class="mt-3 p-4 bg-slate-900/80 border border-slate-800 rounded-xl text-[10px] text-slate-400 space-y-2 leading-relaxed max-w-2xl backdrop-blur-sm cursor-text shadow-lg shadow-black/50">
+                                        <p><strong class="text-white">+40 Pts (Base Front18):</strong> Concedidos automaticamente pelo uso contínuo da nossa arquitetura Zero-Trust, WAF e eliminação de RAM após reconhecimento biométrico/facial ou validações complexas.</p>
+                                        <p><strong class="text-white">+20 Pts (Nomeação Legal):</strong> Preencha um "E-mail de Contato de Privacidade (DPO)" nas configurações da aba [Consentimento].</p>
+                                        <p><strong class="text-white">+25 Pts (Direito de Cancelar):</strong> Habilite o check 'Botão Visível?' para Ação de Revogação no seu Banner Flutuante de Consentimento. (Adequação direta com o Art. 18 de interrupção de tratamentos).</p>
+                                        <p><strong class="text-white">+15 Pts (Finalidade Explícita):</strong> Escreva um Aviso de Consentimento estruturado (com mais de 30 letras). Evite frases genéricas prontas da internet.</p>
+                                        <div class="mt-3 pt-3 border-t border-slate-700/50 flex flex-wrap gap-4 text-[9px] uppercase font-bold tracking-widest">
+                                            <span class="text-emerald-500"><i class="ph-fill ph-check-circle"></i> Risco Baixo (Acima de 90)</span>
+                                            <span class="text-amber-500"><i class="ph-fill ph-warning"></i> Médio (Acima de 65)</span>
+                                            <span class="text-rose-500"><i class="ph-fill ph-warning-octagon"></i> Alto (Abaixo de 65)</span>
+                                        </div>
+                                    </div>
+                                </details>
+
+                            </div>
                         </div>
                     </div>
-                </div>
-
                 <?php
                 $privConf = !empty($config['privacy_config']) ? json_decode($config['privacy_config'], true) : [];
                 $dpoEmail = $privConf['dpo_email'] ?? '';
@@ -1554,155 +1352,556 @@ $myOrigins = $myOrigins ?? [];
                 $bannerText = $privConf['banner_text'] ?? 'Utilizamos cookies essenciais e avaliativos para garantir o funcionamento seguro deste portal. Ao ignorar, você assina implicitamente que está ciente da vigilância digital.';
                 $btnAccept = $privConf['btn_accept'] ?? 'Aceitar Essenciais e Continuar';
                 $btnReject = $privConf['btn_reject'] ?? 'Rejeitar Opcionais';
-                $ageRating = $privConf['age_rating'] ?? '18+';
-                $allowReject = isset($privConf['allow_reject']) ? $privConf['allow_reject'] : true;
-                $hasAnalytics = isset($privConf['has_analytics']) ? $privConf['has_analytics'] : false;
-                $hasMarketing = isset($privConf['has_marketing']) ? $privConf['has_marketing'] : false;
+                
+                // Calculadora Dinâmica de Maturidade LGPD
+                $lgpdScore = 40; // O simples uso da arquitetura Zero-Trust do Front18 garante 40 pt base
+                if (!empty($dpoEmail)) $lgpdScore += 20; // DPO Público e Acessível (+20)
+                if (isset($privConf['allow_reject']) && $privConf['allow_reject']) $lgpdScore += 25; // Botão de Op-out/Revogação visível (+25)
+                if (!empty($privConf['banner_text']) && strlen($privConf['banner_text']) > 30) $lgpdScore += 15; // Finalidade Transparente e explícita (+15)
+                
+                $scoreColor = $lgpdScore >= 90 ? 'emerald' : ($lgpdScore >= 65 ? 'amber' : 'rose');
+                $riskLevel = $lgpdScore >= 90 ? 'Baixo' : ($lgpdScore >= 65 ? 'Médio' : 'Alto');
                 ?>
-
-                <form id="frmPrivacy" class="space-y-6">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Construtor do Modal de Cookies -->
-                        <div class="glass-panel p-6 rounded-2xl border border-slate-800">
-                            <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-text-align-left text-emerald-400"></i> Textos do Banner (Consentimento)</h4>
-                            
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Título do Banner</label>
-                                    <input type="text" name="banner_title" value="<?= htmlspecialchars($bannerTitle) ?>" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white w-full focus:border-emerald-500 focus:outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Mensagem Legal</label>
-                                    <textarea name="banner_text" rows="3" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-300 w-full focus:border-emerald-500 focus:outline-none"><?= htmlspecialchars($bannerText) ?></textarea>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Botão Aceite (Forte)</label>
-                                        <input type="text" name="btn_accept" value="<?= htmlspecialchars($btnAccept) ?>" class="bg-emerald-900/20 border border-emerald-500/50 rounded-lg px-4 py-2 text-sm text-emerald-400 w-full focus:border-emerald-500 focus:outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Botão Rejeitar (Fraco)</label>
-                                        <input type="text" name="btn_reject" value="<?= htmlspecialchars($btnReject) ?>" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-400 w-full focus:border-emerald-500 focus:outline-none">
-                                        <label class="flex items-center gap-2 mt-2 cursor-pointer">
-                                            <input type="checkbox" name="allow_reject" value="1" <?= $allowReject ? 'checked' : '' ?> class="rounded bg-slate-800 border-slate-700 text-emerald-500">
-                                            <span class="text-[10px] text-slate-400">Exibir Botão Rejeitar</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
+                
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col justify-center items-center text-center relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-<?= $scoreColor ?>-500/10 rounded-full blur-2xl transition-colors duration-1000"></div>
+                        <p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Maturidade LGPD</p>
+                        <div class="flex items-end gap-1 mb-1">
+                            <span class="text-4xl font-black text-white"><?= $lgpdScore ?></span><span class="text-lg text-slate-500 font-bold pb-1">/100</span>
                         </div>
+                        <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2 mb-3 overflow-hidden">
+                            <div class="bg-gradient-to-r from-<?= $scoreColor ?>-600 to-<?= $scoreColor ?>-400 h-1.5 rounded-full transition-all duration-1000" style="width: <?= $lgpdScore ?>%"></div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="flex w-2 h-2 rounded-full bg-<?= $scoreColor ?>-500 shadow-[0_0_8px_rgba(var(--color-<?= $scoreColor ?>-500),0.8)]"></span>
+                            <span class="text-[11px] text-<?= $scoreColor ?>-400 font-bold">Risco Nível: <?= $riskLevel ?></span>
+                        </div>
+                    </div>
+                </div>
 
-                        <div class="space-y-6">
-                            <!-- Cargo do DPO -->
-                            <div class="glass-panel p-6 rounded-2xl border border-slate-800">
-                                <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-identification-badge text-teal-400"></i> Contato DPO (Botão de Denúncia)</h4>
-                                <div class="space-y-4">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Canal Eletrônico (Email do DPO)</label>
-                                        <input type="email" name="dpo_email" placeholder="privacy@seudominio.com" value="<?= htmlspecialchars($dpoEmail) ?>" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white w-full focus:border-teal-500 focus:outline-none">
+                <!-- NAV PILLS PARA OS SUB-MÓDULOS -->
+                <div class="flex flex-wrap gap-2 mb-8 border-b border-slate-800 pb-4">
+                    <button type="button" id="btn-dpo-consent" onclick="switchDpoTab('consent')" class="dpo-tab-btn px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold uppercase tracking-widest transition"><i class="ph-bold ph-shield-check mr-1"></i> Consentimento & Banner</button>
+                    
+                    <button type="button" id="btn-dpo-docs" onclick="switchDpoTab('docs')" class="dpo-tab-btn px-4 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition text-xs font-bold uppercase tracking-widest"><i class="ph-bold ph-link mr-1"></i> Hub de Documentos</button>
+                    
+                    <button type="button" id="btn-dpo-reports" onclick="switchDpoTab('reports')" class="dpo-tab-btn px-4 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition text-xs font-bold uppercase tracking-widest"><i class="ph-bold ph-activity mr-1"></i> RIPD & Relatórios</button>
+                    
+                    <button type="button" id="btn-dpo-learn" onclick="switchDpoTab('learn')" class="dpo-tab-btn px-4 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition text-xs font-bold uppercase tracking-widest"><i class="ph-bold ph-graduation-cap mr-1"></i> Conhecendo a Lei</button>
+                </div>
+
+                <div id="dpo-panels-wrapper">
+
+                    <!-- TAB 5: CONHECENDO A LEI -->
+                    <div id="dpo-panel-learn" class="dpo-panel hidden">
+                        <div class="glass-panel p-8 rounded-2xl border border-blue-500/20 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-4 opacity-5"><i class="ph-fill ph-scales text-9xl text-blue-500"></i></div>
+                            <h4 class="text-2xl font-bold text-white mb-2 flex items-center gap-3 relative z-10"><i class="ph-bold ph-graduation-cap text-blue-400"></i> Descomplicando o Compliance Jurídico</h4>
+                            <p class="text-slate-400 max-w-3xl leading-relaxed mb-8 relative z-10">O objetivo desta seção não é substituir um time de advogados, mas te dar total autonomia sobre as ferramentas técnicas que o Front18 entrega para provar sua boa-fé em caso de litígio ou fiscalização da ANPD.</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                                
+                                <!-- COLUNA 1 -->
+                                <div class="space-y-6">
+                                    <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800">
+                                        <h5 class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i class="ph-fill ph-book-open text-emerald-500"></i> 1. O Básico (LGPD e Marco Civil)</h5>
+                                        <p class="text-xs text-slate-400 leading-relaxed mb-3">Toda vez que você coleta IP ou cookies, você está lidando com Dados Pessoais de acordo com a <strong class="text-slate-300">Lei nº 13.709/2018</strong>.</p>
+                                        <ul class="text-[11px] text-slate-500 space-y-2 list-disc pl-4">
+                                            <li><strong class="text-slate-300">Marco Civil (Art. 15):</strong> Exige a guarda dos logs de acesso (IP, hora e data) por pelo menos 6 meses para eventuais ordens judiciais. O Front18 garante essa criptografia sem expor os dados.</li>
+                                            <li><strong class="text-slate-300">Consentimento:</strong> O Front18 injeta o Banner para autorizar Rastreadores (Analytics/Ads). Se o usuário disser "Não", nós bloqueamos as Tags para você não ser multado.</li>
+                                        </ul>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Título Profissional (Label)</label>
-                                        <input type="text" name="dpo_title" value="<?= htmlspecialchars($dpoTitle) ?>" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-300 w-full focus:border-teal-500 focus:outline-none">
+
+                                    <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800">
+                                        <h5 class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i class="ph-fill ph-prohibit text-rose-500"></i> 2. Restrição de Idade & Lei 15.211</h5>
+                                        <p class="text-xs text-slate-400 leading-relaxed mb-3">O mito de que "É só colocar um botão 'Tenho +18'" caiu por terra com legislações locais que exigem dupla validação e diligência comprovada.</p>
+                                        <ul class="text-[11px] text-slate-500 space-y-2 list-disc pl-4">
+                                            <li>O Front18 AgeGate usa modelos estruturais (sem guardar fotos) para forçar o upload de prova fática.</li>
+                                            <li>Se acionado, você terá como provar que aplicou um obstáculo tecnológico complexo — ao contrário de redes abertas que apenas perguntam a data de nascimento.</li>
+                                        </ul>
                                     </div>
-                                    <p class="text-[10px] text-slate-500 leading-relaxed">Ao preencher, o Painel de Privacidade exibirá o botão "Falar com o Encarregado de Dados" para os usuários efetuarem denúncias formais.</p>
                                 </div>
-                            </div>
 
-                            <!-- Classificação -->
-                            <div class="glass-panel p-6 rounded-2xl border border-slate-800">
-                                <h4 class="font-bold text-white mb-4 flex items-center gap-2"><i class="ph-bold ph-seal-warning text-yellow-500"></i> Classificação Indicativa</h4>
-                                <select name="age_rating" class="bg-slate-900 border border-slate-700 text-sm text-white rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 w-full">
-                                    <option value="L" <?= $ageRating === 'L' ? 'selected' : '' ?>>Livre para todos os públicos (Livre)</option>
-                                    <option value="10+" <?= $ageRating === '10+' ? 'selected' : '' ?>>Não recomendado para menores de 10 anos</option>
-                                    <option value="12+" <?= $ageRating === '12+' ? 'selected' : '' ?>>Não recomendado para menores de 12 anos</option>
-                                    <option value="14+" <?= $ageRating === '14+' ? 'selected' : '' ?>>Não recomendado para menores de 14 anos</option>
-                                    <option value="16+" <?= $ageRating === '16+' ? 'selected' : '' ?>>Não recomendado para menores de 16 anos</option>
-                                    <option value="18+" <?= $ageRating === '18+' ? 'selected' : '' ?>>Apenas Maiores de Idade (18+)</option>
-                                </select>
+                                <!-- COLUNA 2 -->
+                                <div class="space-y-6">
+                                    <div class="bg-blue-900/10 p-6 rounded-xl border border-blue-500/20">
+                                        <h5 class="text-lg font-bold text-blue-400 mb-2 flex items-center gap-2"><i class="ph-fill ph-shield-check text-blue-500"></i> Como o Front18 te Protege</h5>
+                                        <p class="text-xs text-blue-200/60 leading-relaxed mb-4">Nenhuma plataforma online pode prometer ausência de processos. Nossa promessa é blindagem técnica: entregar logs auditáveis (como num painel de avião) para você nunca estar de mãos atarefadas numa defesa.</p>
+                                        
+                                        <div class="space-y-3">
+                                            <div class="flex items-start gap-3 bg-slate-900 rounded-lg p-3">
+                                                <i class="ph-fill ph-trash text-emerald-500 text-xl shrink-0 mt-0.5"></i>
+                                                <div>
+                                                    <strong class="text-xs text-white block">RAM Purge (Zero Redundância)</strong>
+                                                    <span class="text-[10px] text-slate-400">Processamos imagens sensíveis sem gravar no disco (SSD). No fim do looping, a memória RAM é expurgada (Garbage Collection nativa).</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-start gap-3 bg-slate-900 rounded-lg p-3">
+                                                <i class="ph-fill ph-fingerprint text-emerald-500 text-xl shrink-0 mt-0.5"></i>
+                                                <div>
+                                                    <strong class="text-xs text-white block">Tokens Hasheados (Anonimização)</strong>
+                                                    <span class="text-[10px] text-slate-400">O usuário do seu site é um número randômico, irreversível e criptografado (`bcrypt`). Se o banco de dados for exposto, nenhum dado pessoal será legível.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bg-amber-900/10 p-4 rounded-xl border border-amber-500/20 flex items-start gap-4">
+                                        <i class="ph-fill ph-warning-circle text-amber-500 text-3xl shrink-0"></i>
+                                        <div>
+                                            <strong class="text-sm text-amber-400 block mb-1">Aviso de Diligência Legal</strong>
+                                            <p class="text-[10px] text-amber-200/50 leading-relaxed">Você (SaaS / Publisher) é o Controlador de Dados (Art. 5º VI). O Front18 atua apenas como Operador Técnico de Blindagem (Art. 5º VII). Preencha seus Termos de Uso e declare isso sempre que solicitado.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Cookies Opcionais -->
-                    <div class="glass-panel p-6 rounded-2xl mt-6">
-                        <h4 class="font-black text-white text-lg mb-1 flex items-center gap-2">Categoria de Coleta de Dados</h4>
-                        <p class="text-[11px] text-slate-400 mb-6 pb-4 border-b border-slate-800">Defina o que é apresentado ao visitante na janela de ajustes ("Minhas Preferências").</p>
-                        
-                        <div class="space-y-4">
-                            <!-- Categoria Estrita -->
-                            <div class="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
-                                <div>
-                                    <h5 class="font-bold text-sm text-slate-200">Essenciais e de Segurança (Obrigatórios)</h5>
-                                    <p class="text-[10px] text-slate-500 mt-1 max-w-lg">Sessão criptográfica do Front18, Tokens anti-CSRF e Cookies do Cloudflare. O usuário <strong class="text-red-400">NÃO PODE</strong> desmarcar isso para usar o site.</p>
+                    <!-- TAB 2: CENTRAL DE LINKS JURÍDICOS E TERMOS -->
+                    <div id="dpo-panel-docs" class="dpo-panel hidden">
+                        <form id="frmPrivacyDocs" class="space-y-6">
+                            
+                            <!-- Formulário de URLs Públicas -->
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                                <h4 class="font-bold text-white mb-2 flex items-center gap-2"><i class="ph-bold ph-link text-indigo-400"></i> Hub de Documentos Públicos</h4>
+                                <p class="text-[10px] text-slate-400 mb-6 leading-relaxed">Hospede suas políticas no seu próprio site. Cole os links abaixo para o Front18 injetá-los automaticamente nos avisos e pop-ups.</p>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2"><i class="ph-bold ph-shield text-indigo-400"></i> Política de Privacidade</label>
+                                        <div class="relative">
+                                            <i class="ph-bold ph-link absolute left-3 top-3 text-slate-500"></i>
+                                            <input type="url" name="privacy_url" placeholder="https://seusite.com/privacidade" value="<?= htmlspecialchars($privConf['privacy_url'] ?? '') ?>" class="bg-slate-900 border border-slate-700 pl-9 rounded-lg px-4 py-3 text-[11px] text-white w-full focus:border-indigo-500 focus:outline-none placeholder-slate-600">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2"><i class="ph-bold ph-file-text text-sky-400"></i> Termos de Uso</label>
+                                        <div class="relative">
+                                            <i class="ph-bold ph-link absolute left-3 top-3 text-slate-500"></i>
+                                            <input type="url" name="terms_url" placeholder="https://seusite.com/termos" value="<?= htmlspecialchars($privConf['terms_url'] ?? '') ?>" class="bg-slate-900 border border-slate-700 pl-9 rounded-lg px-4 py-3 text-[11px] text-white w-full focus:border-sky-500 focus:outline-none placeholder-slate-600">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2"><i class="ph-bold ph-list-dashes text-emerald-400"></i> Formulário DPO / Titular</label>
+                                        <div class="relative">
+                                            <i class="ph-bold ph-link absolute left-3 top-3 text-slate-500"></i>
+                                            <input type="url" name="rights_url" placeholder="https://seusite.com/direitos-lgpd" value="<?= htmlspecialchars($privConf['rights_url'] ?? '') ?>" class="bg-slate-900 border border-slate-700 pl-9 rounded-lg px-4 py-3 text-[11px] text-white w-full focus:border-emerald-500 focus:outline-none placeholder-slate-600">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2"><i class="ph-bold ph-cookie text-amber-400"></i> Política de Cookies</label>
+                                        <div class="relative">
+                                            <i class="ph-bold ph-link absolute left-3 top-3 text-slate-500"></i>
+                                            <input type="url" name="cookies_url" placeholder="https://seusite.com/cookies" value="<?= htmlspecialchars($privConf['cookies_url'] ?? '') ?>" class="bg-slate-900 border border-slate-700 pl-9 rounded-lg px-4 py-3 text-[11px] text-white w-full focus:border-amber-500 focus:outline-none placeholder-slate-600">
+                                        </div>
+                                    </div>
                                 </div>
-                                <label class="relative inline-flex items-center">
-                                  <input type="checkbox" checked disabled class="sr-only peer">
-                                  <div class="w-11 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-500 after:rounded-full after:h-5 after:w-5 peer-checked:bg-emerald-800/50 opacity-50 cursor-not-allowed"></div>
-                                </label>
+
+                                <div class="flex justify-start pt-4 border-t border-slate-800">
+                                    <button type="button" onclick="syncPrivacyConfig(this, this.closest('form'))" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-black text-[10px] shadow-[0_4px_15px_rgba(79,70,229,0.2)] hover:shadow-indigo-500/40 transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
+                                        <i class="ph-bold ph-floppy-disk text-sm"></i> <span>Salvar Hub de Links</span>
+                                    </button>
+                                </div>
                             </div>
 
-                            <!-- Analytics (Opcional) -->
-                            <div class="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-slate-700 transition">
-                                <div>
-                                    <h5 class="font-bold text-sm text-slate-200">Estatísticas e Performance (Google Analytics / GTM)</h5>
-                                    <p class="text-[10px] text-slate-500 mt-1 max-w-lg">Exige que o usuário autorize na primeira visita antes de disparar tags no Head.</p>
+                            <!-- Repositório de Modelos para o Cliente -->
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                                <h4 class="font-bold text-white mb-2 flex items-center gap-2"><i class="ph-bold ph-folder-open text-slate-400"></i> Templates Base de Conformidade Front18</h4>
+                                <p class="text-[10px] text-slate-400 mb-6 leading-relaxed">Você pode copiar as matrizes de proteção abaixo e construir suas próprias páginas no WordPress, inserindo os links finalizados ali em cima.</p>
+                                
+                                <div class="space-y-3">
+                                <details class="group bg-slate-900 border border-slate-700 rounded-xl overflow-hidden text-sm">
+                                    <summary class="p-3 font-bold text-slate-300 cursor-pointer hover:bg-slate-800 transition flex items-center justify-between">
+                                        <span class="flex items-center gap-2"><i class="ph-fill ph-file-text text-indigo-400"></i> Política de Privacidade Web</span>
+                                        <i class="ph-bold ph-caret-down text-slate-500 group-open:rotate-180 transition"></i>
+                                    </summary>
+                                    <div class="p-4 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-400 h-64 overflow-y-auto custom-scrollbar relative">
+                                        <button class="absolute top-2 right-2 text-slate-500 hover:text-indigo-400" onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); FrontToast.show('success', 'Texto copiado com sucesso para sua área de transferência!');"><i class="ph-bold ph-copy text-lg"></i></button>
+                                        <div class="whitespace-pre-wrap">1. Identificação do Controlador (Art.9 III)
+Controlador de Dados: Razão Social Ltda
+CNPJ: 00.000.000/0001-00
+Site: https://meusite.com.br
+Encarregado de Dados (DPO) — Art.41: Nome do Encarregado / dpo@seudominio.com.br
+
+2. Dados Pessoais que Coletamos (Art.9 I)
+O site coleta o mínimo de dados necessários para cumprir regras de proteção de menores (restrição 18+). Abaixo detalhamos cada dado:
+- Endereço IP (hash): Segurança e anti-fraude (Art.7 IX — Legítimo interesse). Hash irreversível.
+- Foto de documento: Verificação de idade (Art.11 I — Consentimento + Art.7 II — Obrigação legal). Eliminada imediatamente.
+- Data de nascimento: Cálculo de idade (Art.7 II). Não armazenada.
+- Faixa etária: Controle de acesso. Dado anonimizado temporário de sessão.
+- Dados de denúncia: Canal de denúncias de violações (Art.7 II). Conforme prazo legal.
+
+🔒 Privacy by Design (Art.46 §2): O sistema foi projetado para coletar o mínimo necessário. A verificação é processada em memória e eliminada (...nunca é salva em disco).
+
+3. Finalidades do Tratamento (Art.6 I, Art.9 I)
+Os dados pessoais são tratados para Verificação de idade, Prevenção de fraudes e manutenção do Canal de denúncias.
+⛔ Não criamos perfis comportamentais, não compartilhamos dados para marketing cruzado e não vendemos dados pessoais.
+
+4. Compartilhamento (Art.9 V) e Seus Direitos (Art.18)
+O compartilhamento é feito estritamente quando exigido por obrigações legais em denúncias.
+Você tem direito à Confirmação, Acesso, Correção, Anonimização, Portabilidade, Eliminação e Revogação (Art.18). Acesse em "Seus Direitos (LGPD)".</div>
+                                    </div>
+                                </details>
+
+                                <details class="group bg-slate-900 border border-slate-700 rounded-xl overflow-hidden text-sm">
+                                    <summary class="p-3 font-bold text-slate-300 cursor-pointer hover:bg-slate-800 transition flex items-center justify-between">
+                                        <span class="flex items-center gap-2"><i class="ph-fill ph-file-doc text-sky-400"></i> Termos de Uso (Menores)</span>
+                                        <i class="ph-bold ph-caret-down text-slate-500 group-open:rotate-180 transition"></i>
+                                    </summary>
+                                    <div class="p-4 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-400 h-48 overflow-y-auto custom-scrollbar relative">
+                                        <button class="absolute top-2 right-2 text-slate-500 hover:text-sky-400" onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); FrontToast.show('success', 'Texto copiado com sucesso para sua área de transferência!');"><i class="ph-bold ph-copy text-lg"></i></button>
+                                        <div class="whitespace-pre-wrap">1. Aceitação dos Termos
+Ao acessar o site "Meu Site", você concorda com estes Termos de Uso e com nossa Política de Privacidade.
+
+2. Restrição de Idade (Classificação Indicativa: 18+)
+Este site contém conteúdo restrito a maiores de 18 anos. Para acessar o conteúdo, é obrigatória verificação rigorosa por meio de métodos que comprovem a sua identidade, não bastando autodeclaração, servindo para adequar a proteção digital.
+
+3. Restrições do Usuário
+Você confirma responsabilizar-se legalmente e agir em premissa de titular primário de seus dispositivos...</div>
+                                    </div>
+                                </details>
+
+                                <details class="group bg-slate-900 border border-slate-700 rounded-xl overflow-hidden text-sm">
+                                    <summary class="p-3 font-bold text-slate-300 cursor-pointer hover:bg-slate-800 transition flex items-center justify-between">
+                                        <span class="flex items-center gap-2"><i class="ph-fill ph-database text-purple-400"></i> ROPA (Registro de Tratamento)</span>
+                                        <i class="ph-bold ph-caret-down text-slate-500 group-open:rotate-180 transition"></i>
+                                    </summary>
+                                    <div class="p-4 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-400 h-64 overflow-y-auto custom-scrollbar relative">
+                                        <button class="absolute top-2 right-2 text-slate-500 hover:text-purple-400" onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); FrontToast.show('success', 'Texto copiado com sucesso para sua área de transferência!');"><i class="ph-bold ph-copy text-lg"></i></button>
+                                        <div class="whitespace-pre-wrap">Registro de Atividades de Tratamento (ROPA) — LGPD Art.37
+1. Identificação do Controlador
+Razão Social: Razão Social Ltda
+Site: https://meusite.com.br
+DPO: <?= htmlspecialchars($dpoEmail) ?>
+
+2. Operações de Tratamento Contempladas
+- Verificação de idade: Foto / Base: Art.11 I + Art.7 II / Extrair data / Armazenamento: RAM / Retenção: Imediata.
+- Controle de Sessão: Token / Base: Art.7 IX / Impedir fraudes / Retenção: 30 dias na BD de tokens.
+- Proteção WAF anti-fraude: IP (hash) / Base: Art.7 IX / Prevenção / Retenção 6 meses.
+- Canal de denúncias: Nome, Email, Ticket / Base: Art.7 II / Investigar falhas / Retenção até prescrição.
+- Auditoria do Sistema Front18: Eventos Adminsitrativos (Sem PII de Usuários) / Base: Dec. Regulatório Marco Civil, Art. 15. / Retenção: 1 Ano.
+
+✅ Medida de minimização atestada pelo Front18 Shield: Fotos de documentos jamais persistem em banco de dados. Uso exclusivo do RAM para processar liberação de interface.</div>
+                                    </div>
+                                </details>
+
+                                <details class="group bg-slate-900 border border-slate-700 rounded-xl overflow-hidden text-sm">
+                                    <summary class="p-3 font-bold text-slate-300 cursor-pointer hover:bg-slate-800 transition flex items-center justify-between">
+                                        <span class="flex items-center gap-2"><i class="ph-fill ph-target text-pink-400"></i> RIPD (Relatório de Impacto)</span>
+                                        <i class="ph-bold ph-caret-down text-slate-500 group-open:rotate-180 transition"></i>
+                                    </summary>
+                                    <div class="p-4 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-400 h-64 overflow-y-auto custom-scrollbar relative">
+                                        <button class="absolute top-2 right-2 text-slate-500 hover:text-pink-400" onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); FrontToast.show('success', 'Texto copiado com sucesso para sua área de transferência!');"><i class="ph-bold ph-copy text-lg"></i></button>
+                                        <div class="whitespace-pre-wrap">Relatório de Impacto à Proteção de Dados (RIPD) — LGPD Art.38
+1. Descrição do Tratamento
+Processo em Avaliação: Processamento de mídias restritivas para garantir acesso somente para 18+.
+Dados em risco: Mídias de checagem.
+Controlador: Razão Social Ltda
+
+2. Necessidade e Proporcionalidade (Finalidade Legítima)
+A coleta é exigida por dever de compliance e proteção estatutária. Da checagem em memória, o Front18 retém exclusivamente um booleano `18+` de aprovação criptografado, não persistindo atributos descritivos do titular.
+
+3. Medidas Mitigadoras de Risco (Defesa Front18)
+- Zero Trust e Proteção Criptográfica na Ponta (Client-side validation restrita).
+- Prevenção de Scraping: Impedimento contra raspagem automatizada em escala, reduzindo o vetor de ataque aos logs.
+- Flush Imediato (Garbage Collection): Garantia programática de limpeza do buffer da câmera instantaneamente na mesma rotina que calcula a idade.</div>
+                                    </div>
+                                </details>
+
+                                <details class="group bg-slate-900 border border-slate-700 rounded-xl overflow-hidden text-sm">
+                                    <summary class="p-3 font-bold text-slate-300 cursor-pointer hover:bg-slate-800 transition flex items-center justify-between">
+                                        <span class="flex items-center gap-2"><i class="ph-fill ph-list-dashes text-emerald-400"></i> Formulário "Seus Direitos"</span>
+                                        <i class="ph-bold ph-caret-down text-slate-500 group-open:rotate-180 transition"></i>
+                                    </summary>
+                                    <div class="p-4 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-400 h-64 overflow-y-auto custom-scrollbar relative">
+                                        <button class="absolute top-2 right-2 text-slate-500 hover:text-emerald-400" onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); FrontToast.show('success', 'Texto copiado com sucesso para sua área de transferência!');"><i class="ph-bold ph-copy text-lg"></i></button>
+                                        <div class="whitespace-pre-wrap">📋 Central de Direitos (LGPD)
+Exerça seus direitos como Titular de Dados conforme Art.18 da Lei 13.709/2018 (LGPD).
+Lembramos que o Front18 Shield coleta o mínimo de dados possível. PII's efêmeros não são armazenados (não é possível exportar documentos antigos não salvos). 
+
+[Selecione Categoria de Risco]
+- Confirmação de Existência de Tratamento (Art.18 I)
+- Cópia / Portabilidade (Art.18 II)
+- Anonimização/Eliminação de dados antigos de Sessão (Art.18 IV)
+- Revogação de Consentimentos de Log/Cookies Tracking
+
+Protocolos atendidos via contato eletrônico no painel administrativo de governança: <?= htmlspecialchars($dpoEmail) ?>. Prazos previstos pela ANPD: Menos de 15 dias para requisições unificadas e simples.</div>
+                                    </div>
+                                </details>
+                                
+                                <details class="group bg-slate-900 border border-slate-700 rounded-xl overflow-hidden text-sm">
+                                    <summary class="p-3 font-bold text-slate-300 cursor-pointer hover:bg-slate-800 transition flex items-center justify-between">
+                                        <span class="flex items-center gap-2"><i class="ph-fill ph-trash text-rose-400"></i> Política de Retenção de Dados</span>
+                                        <i class="ph-bold ph-caret-down text-slate-500 group-open:rotate-180 transition"></i>
+                                    </summary>
+                                    <div class="p-4 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-400 h-48 overflow-y-auto custom-scrollbar">
+                                        <h5 class="text-white font-bold mb-2">Prazos de Retenção (Art.15-16 LGPD)</h5>
+                                        <ul class="list-disc pl-4 space-y-2 mb-4">
+                                            <li><strong class="text-rose-300">Foto / Checagem:</strong> Exclusão Imediata (&lt;1s). Nenhuma persistência em disco. Base Legal: Art.15 I (Finalidade alcançada).</li>
+                                            <li><strong class="text-rose-300">Idade Calculada:</strong> Não armazenada. Convertida em Hash de Sessão Temporário. Base: Art.6 III (Minimização).</li>
+                                            <li><strong class="text-rose-300">Logs de Segurança e WAF:</strong> Mantidos por 12 meses. Base Legal: Marco Civil de Internet Art.15 e LGPD Art.15 II.</li>
+                                        </ul>
+                                    </div>
+                                </details>
+
+                                <details class="group bg-slate-900 border border-slate-700 rounded-xl overflow-hidden text-sm">
+                                    <summary class="p-3 font-bold text-slate-300 cursor-pointer hover:bg-slate-800 transition flex items-center justify-between">
+                                        <span class="flex items-center gap-2"><i class="ph-fill ph-warning-circle text-amber-500"></i> Plano de Resposta a Incidentes</span>
+                                        <i class="ph-bold ph-caret-down text-slate-500 group-open:rotate-180 transition"></i>
+                                    </summary>
+                                    <div class="p-4 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-400 h-48 overflow-y-auto custom-scrollbar">
+                                        <h5 class="text-white font-bold mb-2">Fluxo de Incidente (Art.48 LGPD)</h5>
+                                        <p class="mb-2">Documento exigido para demonstração de responsabilidade técnica.</p>
+                                        <ol class="list-decimal pl-4 space-y-2">
+                                            <li><strong class="text-amber-300">Detecção Remota (Imediata):</strong> Acionamento de Gatilhos WAF Front18 contra tentativas de intrusão no site/DDoS.</li>
+                                            <li><strong class="text-amber-300">Contenção de Emergência (T+15m):</strong> Acionamento manual da "Catraca Nível 3 (Zero Trust Mode)" via Painel SaaS.</li>
+                                            <li><strong class="text-amber-300">Notificação Tática (T+60m):</strong> O DPO titular (<?= htmlspecialchars($dpoEmail) ?>) e o Jurídico serão acionados via sistema com extrato de Logs filtrado para oficiar ANPD caso necessário e dependendo da escala.</li>
+                                        </ol>
+                                    </div>
+                                </details>
                                 </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                  <input type="checkbox" name="has_analytics" value="1" <?= $hasAnalytics ? 'checked' : '' ?> class="sr-only peer">
-                                  <div class="w-11 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 peer-checked:bg-emerald-500 transition-colors"></div>
-                                </label>
                             </div>
-                            
-                            <!-- Tracking / Marketing (Opcional) -->
-                            <div class="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-slate-700 transition">
-                                <div>
-                                    <h5 class="font-bold text-sm text-slate-200">Eventos de Marketing (Pixels Facebook / TikTok)</h5>
-                                    <p class="text-[10px] text-slate-500 mt-1 max-w-lg">Identificadores de anúncio e remarketing do usuário.</p>
+                        </form>
+                    </div>
+
+                    <!-- TAB 1: CONSENTIMENTO E BANNER (Formulário) -->
+                    <div id="dpo-panel-consent" class="dpo-panel block">
+                        <div class="">
+                            <form id="frmPrivacy" class="space-y-6">
+                                
+                                <!-- BANNERS E CONTRATO -->
+                            <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                                <h4 class="font-bold text-white mb-6 flex items-center gap-2"><i class="ph-bold ph-text-align-left text-emerald-400"></i> Engenharia do Banner de Consentimento</h4>
+                                
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Título do Banner</label>
+                                        <input type="text" name="banner_title" value="<?= htmlspecialchars($bannerTitle) ?>" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white w-full focus:border-emerald-500 focus:outline-none placeholder-slate-600">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Redação Jurídica (Finalidade)</label>
+                                        <textarea name="banner_text" rows="3" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 w-full focus:border-emerald-500 focus:outline-none custom-scrollbar uppercase-first"><?= htmlspecialchars($bannerText) ?></textarea>
+                                        <p class="text-[9px] text-slate-500 mt-1 uppercase tracking-wider">Descreva explicitamente por que os dados são coletados (Adequação ANPD).</p>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4 pt-2">
+                                        <div>
+                                            <label class="block text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">Ação de Consentimento (Positivo)</label>
+                                            <input type="text" name="btn_accept" value="<?= htmlspecialchars($btnAccept) ?>" class="bg-emerald-900/20 border border-emerald-500/50 rounded-lg px-4 py-2 text-sm text-emerald-400 w-full focus:border-emerald-500 focus:outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-rose-500 uppercase tracking-widest mb-1">Ação de Revogação (Negativo)</label>
+                                            <input type="text" name="btn_reject" value="<?= htmlspecialchars($btnReject) ?>" class="bg-slate-900 border border-rose-900/50 rounded-lg px-4 py-2 text-sm text-slate-400 w-full focus:border-rose-500 focus:outline-none">
+                                            <label class="flex items-center gap-2 mt-3 cursor-pointer">
+                                                <input type="checkbox" name="allow_reject" value="1" <?= isset($privConf['allow_reject']) && $privConf['allow_reject'] ? 'checked' : '' ?> class="rounded bg-slate-800 border-slate-700 text-rose-500">
+                                                <span class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Botão Visível?</span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                  <input type="checkbox" name="has_marketing" value="1" <?= $hasMarketing ? 'checked' : '' ?> class="sr-only peer">
-                                  <div class="w-11 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 peer-checked:bg-emerald-500 transition-colors"></div>
-                                </label>
                             </div>
+
+                            <!-- NOMINAÇÃO DE DPO -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                                    <h4 class="font-bold text-white mb-4 flex items-center gap-2"><i class="ph-bold ph-identification-badge text-teal-400"></i> Oficial de Dados (DPO)</h4>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email de Contato de Privacidade</label>
+                                            <input type="email" name="dpo_email" placeholder="dpo@empresa.com" value="<?= htmlspecialchars($dpoEmail) ?>" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-xs text-white w-full focus:border-teal-500 focus:outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nomenclatura (Label do Botão)</label>
+                                            <input type="text" name="dpo_title" value="<?= htmlspecialchars($dpoTitle) ?>" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-xs text-slate-300 w-full focus:border-teal-500 focus:outline-none">
+                                        </div>
+                                        <div class="pt-2 border-t border-slate-800">
+                                            <label class="block text-[10px] font-bold text-teal-500 uppercase tracking-widest mb-1 flex items-center gap-1"><i class="ph-fill ph-lock-key"></i> Passkey do Painel Jurídico</label>
+                                            <input type="text" name="dpo_master_key" placeholder="Ex: master-rh-2026" value="<?= htmlspecialchars($privConf['dpo_master_key'] ?? 'front18-master') ?>" class="bg-slate-950 border border-teal-500/50 rounded-lg px-4 py-2 text-xs text-teal-400 w-full shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] focus:border-teal-400 focus:outline-none placeholder-teal-800/50">
+                                            <p class="text-[9px] text-slate-500 mt-1">A senha mestra necessária para descriptografar denúncias no Hub DPO.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                                    <div>
+                                        <h4 class="font-bold text-white mb-2 flex items-center gap-2"><i class="ph-bold ph-activity text-rose-400"></i> Gestão de Monitoramento</h4>
+                                        <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Habilite rastreio por consentimento no banner flutuante.</p>
+                                        
+                                        <div class="space-y-3">
+                                            <label class="flex items-center justify-between group cursor-pointer">
+                                              <span class="text-xs text-slate-300 font-bold tracking-widest uppercase flex items-center gap-2"><i class="ph-bold ph-google-logo text-emerald-400"></i> Analytics (GA4)</span>
+                                              <div class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" name="has_analytics" value="1" <?= isset($privConf['has_analytics']) && $privConf['has_analytics'] ? 'checked' : '' ?> class="sr-only peer">
+                                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 peer-checked:bg-emerald-500 transition-colors"></div>
+                                              </div>
+                                            </label>
+
+                                            <label class="flex items-center justify-between group cursor-pointer">
+                                              <span class="text-xs text-slate-300 font-bold tracking-widest uppercase flex items-center gap-2"><i class="ph-bold ph-currency-dollar text-amber-400"></i> Módulo AdSense</span>
+                                              <div class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" name="has_marketing" value="1" <?= isset($privConf['has_marketing']) && $privConf['has_marketing'] ? 'checked' : '' ?> class="sr-only peer">
+                                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 peer-checked:bg-amber-500 transition-colors"></div>
+                                              </div>
+                                            </label>
+
+                                            <label class="flex items-center justify-between group cursor-pointer">
+                                              <span class="text-xs text-slate-300 font-bold tracking-widest uppercase flex items-center gap-2"><i class="ph-bold ph-facebook-logo text-blue-500"></i> Meta Pixel (Ads)</span>
+                                              <div class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" name="has_meta" value="1" <?= isset($privConf['has_meta']) && $privConf['has_meta'] ? 'checked' : '' ?> class="sr-only peer">
+                                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 peer-checked:bg-blue-500 transition-colors"></div>
+                                              </div>
+                                            </label>
+
+                                            <label class="flex items-center justify-between group cursor-pointer">
+                                              <span class="text-xs text-slate-300 font-bold tracking-widest uppercase flex items-center gap-2"><i class="ph-bold ph-tiktok-logo text-pink-500"></i> TikTok Pixel</span>
+                                              <div class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" name="has_tiktok" value="1" <?= isset($privConf['has_tiktok']) && $privConf['has_tiktok'] ? 'checked' : '' ?> class="sr-only peer">
+                                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 peer-checked:bg-pink-500 transition-colors"></div>
+                                              </div>
+                                            </label>
+
+                                            <label class="flex items-center justify-between group cursor-pointer">
+                                              <span class="text-xs text-slate-300 font-bold tracking-widest uppercase flex items-center gap-2"><i class="ph-bold ph-fire text-orange-500"></i> Heatmaps (Hotjar)</span>
+                                              <div class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" name="has_heatmaps" value="1" <?= isset($privConf['has_heatmaps']) && $privConf['has_heatmaps'] ? 'checked' : '' ?> class="sr-only peer">
+                                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 peer-checked:bg-orange-500 transition-colors"></div>
+                                              </div>
+                                            </label>
+
+                                            <label class="flex items-center justify-between group cursor-pointer">
+                                              <span class="text-xs text-slate-300 font-bold tracking-widest uppercase flex items-center gap-2"><i class="ph-bold ph-webhooks-logo text-indigo-400"></i> Zapier Webhooks</span>
+                                              <div class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" name="has_webhooks" value="1" <?= isset($privConf['has_webhooks']) && $privConf['has_webhooks'] ? 'checked' : '' ?> class="sr-only peer">
+                                                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 peer-checked:bg-indigo-500 transition-colors"></div>
+                                              </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-2 flex justify-end">
+                                <button type="button" onclick="syncPrivacyConfig(this, this.closest('form'))" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-xl font-black text-sm shadow-[0_4px_15px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
+                                    <i class="ph-bold ph-gavel text-lg"></i> <span>Atermar Diretrizes LGPD & Webhook</span>
+                                </button>
+                            </div>
+                        </form>
+                            </form>
                         </div>
-                    </div>
+                    </div> <!-- FECHA TAB 1 -->
+                </div> <!-- FECHA DPO PANELS WRAPPER -->
 
-                    <div class="pt-6 border-t border-slate-800 mt-6 flex justify-end">
-                        <button type="button" onclick="syncPrivacyConfig(this.closest('form'))" id="btnSavePrivacy" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2 uppercase tracking-wide">
-                            <i class="ph-bold ph-gavel text-lg"></i> <span>Atermar Pacto de Privacidade</span>
-                        </button>
-                    </div>
+                <!-- SCRIPT DAS ABAS E SALVAMENTO -->
+                <script>
+                function switchDpoTab(tabId) {
+                    // Oculta todas
+                    document.querySelectorAll('.dpo-panel').forEach(el => {
+                        el.classList.remove('block');
+                        el.classList.add('hidden');
+                    });
+                    
+                    // Reseta botões
+                    document.querySelectorAll('.dpo-tab-btn').forEach(el => {
+                        el.classList.remove('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/30');
+                        el.classList.add('bg-slate-900', 'text-slate-400', 'border-slate-800');
+                    });
 
-                    <script>
-                    function syncPrivacyConfig(form) {
-                        const btn = document.getElementById('btnSavePrivacy');
-                        const originalHTML = btn.innerHTML;
-                        btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i> <span>Salvando Jurisprudência...</span>';
-                        btn.classList.add('opacity-80', 'cursor-not-allowed');
-                        btn.disabled = true;
+                    // Ativa alvo
+                    document.getElementById('dpo-panel-' + tabId).classList.remove('hidden');
+                    document.getElementById('dpo-panel-' + tabId).classList.add('block');
+                    
+                    let btn = document.getElementById('btn-dpo-' + tabId);
+                    btn.classList.remove('bg-slate-900', 'text-slate-400', 'border-slate-800');
+                    btn.classList.add('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/30');
+                }
+
+                function syncPrivacyConfig(btn, form) {
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i> <span>Submetendo Termos...</span>';
+                    btn.classList.add('opacity-80', 'cursor-not-allowed');
+                    btn.disabled = true;
+                    
+                    const formData = new FormData(form);
+                    formData.append('action', 'save_privacy');
+                    
+                    fetch('?route=dashboard', { method: 'POST', body: formData })
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data.success) {
+                            btn.innerHTML = '<i class="ph-bold ph-check-circle text-lg"></i> <span>Webhook DPO Concluído!</span>';
+                            btn.classList.replace('bg-emerald-600', 'bg-teal-600');
+                        } else {
+                            btn.innerHTML = 'Erro ao Salvar!';
+                            btn.classList.add('bg-rose-600');
+                        }
                         
-                        const formData = new FormData(form);
-                        formData.append('action', 'save_privacy');
-                        
-                        fetch('?route=dashboard', { method: 'POST', body: formData })
-                        .then(res => res.json())
-                        .then(data => {
-                            btn.innerHTML = '<i class="ph-bold ph-check text-lg"></i> <span>Política de Mídia Aplicada!</span>';
-                            
-                            setTimeout(() => {
-                                btn.innerHTML = originalHTML;
-                                btn.classList.remove('opacity-80', 'cursor-not-allowed');
-                                btn.disabled = false;
-                            }, 3500);
-                        });
-                    }
-                    </script>
-                </form>
+                        setTimeout(() => {
+                            btn.innerHTML = originalHTML;
+                            btn.classList.remove('opacity-80', 'cursor-not-allowed', 'bg-teal-600', 'bg-rose-600');
+                            btn.disabled = false;
+                        }, 3000);
+                    })
+                    .catch(e => {
+                        FrontToast.show('error', "ERRO LOCAL: " + e.message);
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('opacity-80', 'cursor-not-allowed');
+                        btn.disabled = false;
+                    });
+                }
 
-                <!-- CAIXA DE ENTRADA DO DPO -->
+                function unlockDpoEngine(e, form) {
+                    e.preventDefault();
+                    const btn = form.querySelector('button');
+                    const original = btn.innerHTML;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i>';
+                    
+                    const fd = new FormData(form);
+                    fd.append('action', 'dpo_unlock');
+                    
+                    fetch('?route=dashboard', { method: 'POST', body: fd })
+                    .then(r => r.json())
+                    .then(d => {
+                        if(d.success) location.reload();
+                        else {
+                            FrontToast.show('error', d.error);
+                            btn.innerHTML = original;
+                        }
+                    });
+                }
+
+                function lockDpoEngine() {
+                    if(!confirm('Deseja criptografar e trancar sua sessão DPO? Isso impedirá o acesso aos dados abertos dos denunciantes.')) return;
+                    const fd = new FormData();
+                    fd.append('action', 'dpo_lock');
+                    fetch('?route=dashboard', { method: 'POST', body: fd })
+                    .then(() => location.reload());
+                }
+
+                function resolveDpoTicket(e, form) {
+                    e.preventDefault();
+                    if(!confirm('Confirmar o encerramento jurídico deste ticket? Processo destrutivo, sem retorno.')) return;
+                    
+                    const btn = form.querySelector('button');
+                    const original = btn.innerHTML;
+                    btn.innerHTML = 'Processando...';
+                    
+                    const fd = new FormData(form);
+                    fd.append('action', 'dpo_resolve');
+                    
+                    fetch('?route=dashboard', { method: 'POST', body: fd })
+                    .then(r => r.json())
+                    .then(d => {
+                        if(d.success) location.reload();
+                        else { FrontToast.show('error', d.error); btn.innerHTML = original; }
+                    });
+                }
+                </script>
+
+                <div id="dpo-panel-reports" class="dpo-panel hidden">
+                <!-- CAIXA DE ENTRADA DO DPO SECURE -->
                 <?php
-                if (isset($domain['id'])) {
+                $isDpoUnlocked = isset($_SESSION['dpo_unlocked_' . $userId]);
+                if ($isDpoUnlocked && isset($domain['id'])) {
                     $stmtDpo = $pdo->prepare("SELECT * FROM saas_dpo_reports WHERE domain_id = ? ORDER BY created_at DESC LIMIT 50");
                     $stmtDpo->execute([$domain['id']]);
                     $dpoReports = $stmtDpo->fetchAll();
@@ -1710,9 +1909,27 @@ $myOrigins = $myOrigins ?? [];
                     $dpoReports = [];
                 }
                 ?>
-                <div class="glass-panel p-8 rounded-2xl mt-8 border border-slate-800">
-                    <h4 class="text-xl font-bold text-white mb-2 flex items-center gap-2"><i class="ph-bold ph-envelope-simple-open text-teal-500"></i> Caixa de Entrada DPO</h4>
+                <div class="glass-panel p-8 rounded-2xl md:mt-8 border border-slate-800">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                        <h4 class="text-xl font-bold text-white flex items-center gap-2"><i class="ph-bold ph-envelope-simple-open text-teal-500"></i> Caixa de Entrada DPO</h4>
+                        <?php if($isDpoUnlocked): ?>
+                            <button onclick="lockDpoEngine()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest transition flex items-center gap-1.5"><i class="ph-bold ph-lock-key"></i> Trancar Acesso</button>
+                        <?php endif; ?>
+                    </div>
                     <p class="text-sm text-slate-400 mb-6">Listagem das solicitações formais enviadas pelos usuários perante as leis locais de Privacidade (Acesso a dados, deleção, denúncia de vazamentos, etc).</p>
+                    
+                    <?php if(!$isDpoUnlocked): ?>
+                    <div class="bg-slate-900/50 p-8 rounded-xl border border-slate-800 flex flex-col items-center text-center">
+                        <i class="ph-bold ph-lock-key text-5xl text-slate-600 mb-4"></i>
+                        <h5 class="text-lg font-bold text-white mb-2">Acesso Classificado</h5>
+                        <p class="text-sm text-slate-400 max-w-sm mb-6">Insira a Passkey Mestra definida pelo DPO Corporativo para descriptografar os tickets judiciais desta sessão.</p>
+                        
+                        <form id="frmDpoUnlock" onsubmit="unlockDpoEngine(event, this)" class="w-full max-w-sm flex gap-3">
+                            <input type="password" name="dpo_key" required placeholder="Insira a Passkey Mestra..." class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:border-teal-500 focus:outline-none placeholder-slate-600">
+                            <button type="submit" class="bg-teal-600 hover:bg-teal-500 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition flex items-center text-lg"><i class="ph-bold ph-key"></i></button>
+                        </form>
+                    </div>
+                    <?php else: ?>
                     
                     <div class="overflow-x-auto rounded-xl border border-slate-800">
                         <table class="w-full text-left bg-slate-900/50">
@@ -1754,17 +1971,33 @@ $myOrigins = $myOrigins ?? [];
                                             <?= nl2br(htmlspecialchars($rpt['report_message'] ?? '')) ?>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right">
-                                        <span class="inline-flex items-center px-3 py-1 rounded bg-yellow-500/10 border border-yellow-500 text-yellow-500 text-xs font-bold uppercase tracking-widest">
-                                            <?= $rpt['status'] === 'pending' ? 'Em Análise' : 'Respondido' ?>
-                                        </span>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right align-top">
+                                        <?php if($rpt['status'] === 'pending'): ?>
+                                            <span class="inline-flex items-center px-3 py-1 rounded bg-yellow-500/10 border border-yellow-500 text-yellow-500 text-[10px] font-bold uppercase tracking-widest mb-3">Em Análise</span>
+                                            
+                                            <form class="mt-2 text-left w-64 ml-auto" onsubmit="resolveDpoTicket(event, this)">
+                                                <input type="hidden" name="report_id" value="<?= $rpt['id'] ?>">
+                                                <textarea name="resolution_notes" required rows="2" class="w-full bg-slate-900 border border-slate-700 p-2 text-xs text-slate-300 rounded focus:border-teal-500 focus:outline-none mb-2" placeholder="Notas de Resolução e Ajustes..."></textarea>
+                                                <button type="submit" class="w-full bg-slate-800 hover:bg-teal-600 border border-teal-500/20 text-white py-2 px-3 rounded text-[10px] uppercase font-bold tracking-widest transition flex items-center justify-center gap-1"><i class="ph-bold ph-check"></i> Encerrar Protocolo</button>
+                                            </form>
+                                        <?php else: ?>
+                                            <span class="inline-flex items-center px-3 py-1 rounded bg-teal-500/10 border border-teal-500 text-teal-400 text-[10px] font-bold uppercase tracking-widest mb-3">Resolvido</span>
+                                            <div class="text-left w-64 ml-auto">
+                                                <div class="text-[9px] text-slate-500 mb-1">Encerrado em: <?= date('d/m/Y H:i', strtotime($rpt['resolved_at'])) ?></div>
+                                                <div class="text-[10px] text-slate-400 bg-slate-800/50 p-2 rounded italic mt-1 whitespace-normal break-words border border-slate-700/50">
+                                                    <?= nl2br(htmlspecialchars($rpt['report_notes'] ?? '')) ?>
+                                                </div>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                                 <?php endforeach; endif; ?>
                             </tbody>
                         </table>
                     </div>
+                    <?php endif; ?>
                 </div>
+                </div> <!-- FECHA TAB 4 REPORTS -->
             </div>
 
             <!-- ====== TAB 6: SUSPICIOUS (Medo/Valor) ====== -->
@@ -1808,7 +2041,7 @@ $myOrigins = $myOrigins ?? [];
                     </div>
                     
                     <div class="flex gap-4">
-                        <button onclick="alert('Nenhuma fatura anterior localizada.')" class="bg-transparent hover:bg-white/5 text-slate-400 font-bold px-6 py-3 rounded-xl transition-colors text-sm border border-slate-800">Ver Faturas Anteriores</button>
+                        <button onclick="FrontToast.show('info', 'Nenhuma fatura anterior localizada.')" class="bg-transparent hover:bg-white/5 text-slate-400 font-bold px-6 py-3 rounded-xl transition-colors text-sm border border-slate-800">Ver Faturas Anteriores</button>
                     </div>
 
                     <?php
@@ -1835,7 +2068,7 @@ $myOrigins = $myOrigins ?? [];
                                     <li class="flex items-center gap-3"><i class="<?= $ass['has_anti_scraping'] ? 'ph-bold ph-check text-emerald-500' : 'ph-bold ph-x text-red-500' ?>"></i> WAF Anti-Scraping Blindado</li>
                                     <li class="flex items-center gap-3"><i class="ph-bold ph-check text-emerald-500"></i> Dossiê LGPD / Blockchain Level <?= $ass['allowed_level'] ?></li>
                                 </ul>
-                                <button onclick="alert('Integração de Webhook Financeiro pendente. Chame o suporte técnico (B20) para emissão do contrato PIX/Cartão.')" class="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all <?= $isActivePlan ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' : 'bg-primary-600 hover:bg-primary-500 text-white shadow-[0_4px_15px_rgba(99,102,241,0.25)] hover:shadow-[0_4px_25px_rgba(99,102,241,0.4)]' ?>" <?= $isActivePlan ? 'disabled' : '' ?>>
+                                <button onclick="FrontToast.show('warning', 'Integração de Webhook Financeiro pendente. Chame o suporte técnico (B20) para emissão do contrato PIX/Cartão.')" class="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all <?= $isActivePlan ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' : 'bg-primary-600 hover:bg-primary-500 text-white shadow-[0_4px_15px_rgba(99,102,241,0.25)] hover:shadow-[0_4px_25px_rgba(99,102,241,0.4)]' ?>" <?= $isActivePlan ? 'disabled' : '' ?>>
                                     <?php 
                                         if ($isActivePlan) {
                                             echo 'Assinatura Ativa';
@@ -1868,7 +2101,7 @@ $myOrigins = $myOrigins ?? [];
                     <label class="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">Authorization Secret (Chave B2B)</label>
                     <div class="flex items-center gap-0">
                         <input type="text" readonly value="<?= htmlspecialchars($apiKey) ?>" class="bg-slate-950 border border-slate-700/50 rounded-l-xl px-4 py-3 text-amber-400 font-mono text-sm w-full focus:outline-none tracking-widest bg-stripes">
-                        <button onclick="navigator.clipboard.writeText('<?= htmlspecialchars($apiKey) ?>'); alert('Chave Protegida Copiada!');" class="bg-slate-800 hover:bg-slate-700 border border-slate-700/50 border-l-0 rounded-r-xl px-5 py-3 text-white transition-colors flex items-center gap-2 font-medium shrink-0"><i class="ph-bold ph-copy"></i> Copiar</button>
+                        <button onclick="navigator.clipboard.writeText('<?= htmlspecialchars($apiKey) ?>'); FrontToast.show('success', 'Chave Mestra Copiada com sucesso!');" class="bg-slate-800 hover:bg-slate-700 border border-slate-700/50 border-l-0 rounded-r-xl px-5 py-3 text-white transition-colors flex items-center gap-2 font-medium shrink-0"><i class="ph-bold ph-copy"></i> Copiar</button>
                     </div>
                 </div>
                 
@@ -2077,6 +2310,24 @@ $myOrigins = $myOrigins ?? [];
                         
                         <!-- Conteiner Dinâmico da Biblioteca -->
                         <div id="mediaManagerWorkspace" class="hidden">
+                            <!-- Barra de Ferramentas / Filtros -->
+                            <div class="flex flex-col md:flex-row gap-4 mb-6 pt-4 border-t border-slate-800">
+                                <div class="flex-1 flex gap-2">
+                                    <div class="relative flex-1">
+                                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                                        <input type="text" id="mediaSearchInput" placeholder="Buscar por nome do arquivo..." class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors">
+                                    </div>
+                                    <div class="relative w-48">
+                                        <i class="ph-bold ph-folder absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                                        <select id="mediaFolderSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer">
+                                            <option value="all">Todas as Pastas</option>
+                                        </select>
+                                        <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+                                    </div>
+                                    <button type="button" id="btnFilterMedia" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors border border-slate-700">Filtrar</button>
+                                </div>
+                            </div>
+                            
                             <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/50">
                                 <p class="text-xs text-slate-400 font-mono" id="mediaStats"><i class="ph-bold ph-circle-notch animate-spin"></i> Analisando Servidor...</p>
                                 <button type="button" id="btnSaveMedia" class="relative overflow-hidden bg-slate-900 border border-slate-700 hover:border-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors flex items-center gap-2">
@@ -2120,11 +2371,26 @@ $myOrigins = $myOrigins ?? [];
                     
                     let currentPage = 1;
                     let isLoading = false;
-                    let currentlyProtectedIds = [];
+                    let currentlyProtectedIds = null; // Nulo para indicar que precisamos puxar a verdade do backend no 1º load
+
+                    // SISTEMA DE ESTADO GLOBAL: Monitorar mudanças nos inputs da grid independentemente da página
+                    grid.addEventListener('change', (e) => {
+                        if (e.target && e.target.classList.contains('media-checkbox')) {
+                            const id = String(e.target.value);
+                            if (e.target.checked) {
+                                if (!currentlyProtectedIds.includes(id)) currentlyProtectedIds.push(id);
+                            } else {
+                                currentlyProtectedIds = currentlyProtectedIds.filter(v => v !== id);
+                            }
+                        }
+                    });
 
                     const loadMedia = async (page = 1, append = false) => {
                         if(isLoading) return;
                         isLoading = true;
+                        
+                        const searchVal = document.getElementById('mediaSearchInput').value;
+                        const folderVal = document.getElementById('mediaFolderSelect').value;
                         
                         if(!append) {
                             grid.innerHTML = '<div class="col-span-full py-12 text-center text-emerald-500/50 flex flex-col items-center justify-center gap-2"><i class="ph-bold ph-circle-notch animate-spin text-3xl"></i><span class="text-xs uppercase tracking-widest font-bold">Hackeando Servidor...</span></div>';
@@ -2134,11 +2400,11 @@ $myOrigins = $myOrigins ?? [];
                         }
 
                         try {
-                            const res = await fetch(`?route=dashboard&action=load_wp_media&page=${page}`);
+                            const res = await fetch(`?route=dashboard&action=load_wp_media&page=${page}&search=${encodeURIComponent(searchVal)}&folder=${encodeURIComponent(folderVal)}`);
                             const data = await res.json();
                             
                             if (data.error) {
-                                alert("ERRO DE CONEXÃO: " + data.error);
+                                FrontToast.show('error', "ERRO DE CONEXÃO: " + data.error);
                                 if(!append) workspace.classList.add('hidden');
                                 isLoading = false;
                                 return;
@@ -2146,24 +2412,40 @@ $myOrigins = $myOrigins ?? [];
                             
                             if(!append) {
                                 grid.innerHTML = '';
-                                currentlyProtectedIds = data.protected_ids || [];
+                                // Inicializa a array baseada no backend SOMENTE se ainda for nula
+                                // Isso evita apagar o que o usuário marcou localmente caso ele filtre a página
+                                if (currentlyProtectedIds === null) {
+                                    currentlyProtectedIds = data.protected_ids ? data.protected_ids.map(String) : [];
+                                }
+                                
+                                // Atualiza o Dropdown de Pastas (se vier do servidor e for a primeira página)
+                                if (page === 1 && data.folders && document.getElementById('mediaFolderSelect').options.length <= 1) {
+                                    const select = document.getElementById('mediaFolderSelect');
+                                    data.folders.forEach(f => {
+                                        const opt = document.createElement('option');
+                                        opt.value = f.value;
+                                        opt.textContent = f.label;
+                                        select.appendChild(opt);
+                                    });
+                                }
                             }
 
                             if(!data.data || data.data.length === 0) {
-                                if(!append) grid.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 text-sm">Nenhuma mídia compatível localizada no WordPress.</div>';
+                                if(!append) grid.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 text-sm">Nenhuma mídia compatível localizada no WordPress com estes filtros.</div>';
                                 document.getElementById('mediaPaginationBox').classList.add('hidden');
                                 isLoading = false;
                                 return;
                             }
 
-                            stats.innerHTML = `Biblioteca Mapeada: <span class="text-white font-bold">${data.total_items} Imagens Totais</span>`;
+                            stats.innerHTML = `Biblioteca Mapeada: <span class="text-white font-bold">${data.total_items} Imagens</span> (Página ${page} de ${data.total_pages})`;
 
                             data.data.forEach(img => {
-                                const isProtected = currentlyProtectedIds.includes(String(img.id)) || currentlyProtectedIds.includes(parseInt(img.id));
+                                const strId = String(img.id);
+                                const isProtected = currentlyProtectedIds.includes(strId);
                                 
                                 const html = `
                                     <label class="cursor-pointer relative group block aspect-square rounded-xl overflow-hidden bg-slate-900 border border-slate-800">
-                                        <input type="checkbox" name="protected_ids[]" value="${img.id}" class="media-checkbox sr-only" ${isProtected ? 'checked' : ''}>
+                                        <input type="checkbox" value="${img.id}" class="media-checkbox sr-only" ${isProtected ? 'checked' : ''}>
                                         <div class="absolute inset-0 border-2 border-transparent transition-colors z-20 rounded-xl pointer-events-none">
                                             <div class="overlay-blur absolute inset-0 backdrop-blur-md bg-slate-950/60 opacity-0 transition-opacity flex flex-col items-center justify-center pointer-events-none">
                                                 <i class="ph-fill ph-lock-key text-emerald-400 text-2xl drop-shadow-lg scale-[0.8] opacity-0 transition-all duration-300 check-icon-media mt-2"></i>
@@ -2187,7 +2469,7 @@ $myOrigins = $myOrigins ?? [];
 
                         } catch (e) {
                             console.error(e);
-                            alert("Falha extrema de CORS ou Servidor Inalcançável. Verifique se o plugin no WordPress foi atualizado.");
+                            FrontToast.show('error', "Falha extrema de CORS ou Servidor Inalcançável. Verifique se o plugin no WordPress foi atualizado.");
                             if(!append) workspace.classList.add('hidden');
                         }
                         
@@ -2195,6 +2477,26 @@ $myOrigins = $myOrigins ?? [];
                     };
 
                     btnLoad.addEventListener('click', () => {
+                        currentPage = 1;
+                        document.getElementById('mediaSearchInput').value = '';
+                        document.getElementById('mediaFolderSelect').innerHTML = '<option value="all">Todas as Pastas</option>'; // reseta a combo
+                        loadMedia(currentPage, false);
+                    });
+
+                    document.getElementById('btnFilterMedia').addEventListener('click', () => {
+                        currentPage = 1;
+                        loadMedia(currentPage, false);
+                    });
+
+                    document.getElementById('mediaSearchInput').addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            currentPage = 1;
+                            loadMedia(currentPage, false);
+                        }
+                    });
+
+                    document.getElementById('mediaFolderSelect').addEventListener('change', () => {
                         currentPage = 1;
                         loadMedia(currentPage, false);
                     });
@@ -2210,8 +2512,13 @@ $myOrigins = $myOrigins ?? [];
                         btnSave.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-emerald-400"></i> Aplicando Blur Externo...';
                         btnSave.disabled = true;
 
-                        const formElement = document.getElementById('frmMediaSync');
-                        const formData = new FormData(formElement);
+                        // Usa uma FormData limpa (ignora inputs escondidos na DOM ou do form container)
+                        const formData = new FormData();
+                        if (currentlyProtectedIds !== null) {
+                            currentlyProtectedIds.forEach(id => {
+                                formData.append('protected_ids[]', id);
+                            });
+                        }
                         formData.append('action', 'save_wp_media');
 
                         try {
@@ -2227,12 +2534,12 @@ $myOrigins = $myOrigins ?? [];
                                     btnSave.disabled = false;
                                 }, 3000);
                             } else {
-                                alert("ERRO NO PUSH: " + json.error);
+                                FrontToast.show('error', "ERRO NO PUSH: " + json.error);
                                 btnSave.innerHTML = originalHtml;
                                 btnSave.disabled = false;
                             }
                         } catch(e) {
-                            alert("ERRO LOCAL: " + e.message);
+                            FrontToast.show('error', "ERRO LOCAL: " + e.message);
                             btnSave.innerHTML = originalHtml;
                             btnSave.disabled = false;
                         }
@@ -2250,6 +2557,42 @@ $myOrigins = $myOrigins ?? [];
     </main>
 
     <script>
+        function selectBlurPreset(mode, element) {
+            const defaultSel = 'img, video, iframe, [data-front18="locked"]';
+            const eleSel = 'img, video, iframe, [data-front18="locked"], .elementor-loop-container article, .elementor-widget-loop-builder .elementor-post';
+            const input = document.getElementById('blur_selector_input');
+            const area = document.getElementById('custom_blur_area');
+            
+            // Reset state
+            document.querySelectorAll('input[name="_blur_preset"]').forEach(radio => {
+                let label = radio.closest('label');
+                let icon = label.querySelector('.preset-icon');
+                let title = label.querySelector('.preset-title');
+                label.className = 'flex p-3 border rounded-xl cursor-pointer transition-all bg-slate-900 border-slate-700 hover:border-slate-500';
+                icon.className = 'preset-icon ph-fill ph-check-circle opacity-0 text-emerald-500';
+                title.className = 'preset-title text-sm font-bold text-slate-300 flex items-center gap-2';
+            });
+            
+            // Apply new state
+            let label = element;
+            let icon = label.querySelector('.preset-icon');
+            let title = label.querySelector('.preset-title');
+            
+            if (mode === 'custom') {
+                label.className = 'flex p-3 border rounded-xl cursor-pointer transition-all bg-amber-900/10 border-amber-500';
+                icon.className = 'preset-icon ph-fill ph-check-circle opacity-100 text-amber-500';
+                title.className = 'preset-title text-sm font-bold text-amber-400 flex items-center gap-2';
+                area.classList.remove('hidden');
+            } else {
+                label.className = 'flex p-3 border rounded-xl cursor-pointer transition-all bg-emerald-900/10 border-emerald-500';
+                icon.className = 'preset-icon ph-fill ph-check-circle opacity-100 text-emerald-500';
+                title.className = 'preset-title text-sm font-bold text-emerald-400 flex items-center gap-2';
+                area.classList.add('hidden');
+                if (mode === 'default') input.value = defaultSel;
+                if (mode === 'elementor') input.value = eleSel;
+            }
+        }
+
         const titles = {
             'home': 'Visão Geral', 'logs': 'Cadeia de Custódia Auditável', 'reports': 'Dossiê Jurídico (PDF)', 
             'domains': 'Gestão de Domínios', 'settings': 'Configurações de Blindagem', 'appearance': 'Personalização de Marca e UI', 'privacy': 'Portal LGPD e Cookies', 'suspicious': 'Atividade Suspeita / Abuso', 
@@ -2293,6 +2636,52 @@ $myOrigins = $myOrigins ?? [];
                 switchTab('home');
             }
         });
+    </script>
+    
+    <!-- Sistema Global de Notificações VIP (Toasts) -->
+    <div id="front18-toast-container" class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
+
+    <script>
+    const FrontToast = {
+        show: function(type, message) {
+            const container = document.getElementById('front18-toast-container');
+            const toast = document.createElement('div');
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-2xl transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-auto max-w-[320px] w-max ml-auto`;
+            
+            let icon = '';
+            if (type === 'success') {
+                toast.classList.add('bg-emerald-950/90', 'border-emerald-500/30', 'text-emerald-50');
+                icon = '<i class="ph-fill ph-check-circle text-emerald-400 text-xl"></i>';
+            } else if (type === 'error') {
+                toast.classList.add('bg-rose-950/90', 'border-rose-500/30', 'text-rose-50');
+                icon = '<i class="ph-fill ph-warning-circle text-rose-400 text-xl"></i>';
+            } else if (type === 'warning') {
+                toast.classList.add('bg-amber-950/90', 'border-amber-500/30', 'text-amber-50');
+                icon = '<i class="ph-fill ph-warning text-amber-400 text-xl"></i>';
+            } else {
+                toast.classList.add('bg-slate-900/90', 'border-slate-700/50', 'text-slate-100');
+                icon = '<i class="ph-fill ph-info text-indigo-400 text-xl"></i>';
+            }
+            
+            toast.innerHTML = `
+                <div class="shrink-0">${icon}</div>
+                <div class="text-[11px] font-mono leading-relaxed">${message}</div>
+                <button onclick="this.parentElement.remove()" class="shrink-0 text-slate-400 hover:text-white transition-colors p-1"><i class="ph-bold ph-x"></i></button>
+            `;
+            
+            container.appendChild(toast);
+            
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            });
+            
+            setTimeout(() => {
+                if(!toast) return;
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 6000);
+        }
+    };
     </script>
 </body>
 </html>

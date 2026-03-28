@@ -38,6 +38,7 @@ class Front18_Frontend {
         
         $blur_amount   = isset($synced_config['blur_amount']) ? (int)$synced_config['blur_amount'] : 25;
         $blur_selector = !empty($synced_config['blur_selector']) ? $synced_config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
+        $protection_level = isset($synced_config['level']) ? (int)$synced_config['level'] : 1;
         
         $protected_ids = get_option( 'front18_protected_media_ids', array() );
 
@@ -46,45 +47,59 @@ class Front18_Frontend {
 
         $formatted_selectors = '';
 
+        // Arquitetura Híbrida: Sempre aplica o seletor genérico, mas soma a Granularidade se houver.
+        $formatted_selectors = implode(', ', array_map(function($sel) {
+            return 'html.front18-hide ' . trim($sel);
+        }, explode(',', $blur_selector)));
+
+        if (empty($formatted_selectors)) {
+            $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, html.front18-hide .e-con, html.front18-hide .elementor-section, html.front18-hide .wp-block-cover, ' . $locked_tag_selector;
+        } else {
+            $formatted_selectors .= ', ' . $locked_tag_selector . ', html.front18-hide .e-con, html.front18-hide .elementor-section, html.front18-hide .wp-block-cover';
+        }
+
         if ( !empty($protected_ids) && is_array($protected_ids) ) {
-            // Nova Arquitetura Granular: Borrar APENAS os IDs de imagens específicos passados via SaaS
-            $formatted_selectors = implode(', ', array_map(function($id) {
+            // Soma a Arquitetura Granular à lista de defesas
+            $granular_selectors = implode(', ', array_map(function($id) {
                 return 'html.front18-hide .wp-image-' . (int)$id . ', html.front18-hide .attachment-' . (int)$id;
             }, $protected_ids));
             
-            // Garantir que a regra manual continue valendo para contornar exceções de Page Builders
-            $formatted_selectors .= ', ' . $locked_tag_selector;
-
-        } else {
-            // Arquitetura Clássica: Filtro genérico baseado em tag (img, video)
-            $formatted_selectors = implode(', ', array_map(function($sel) {
-                return 'html.front18-hide ' . trim($sel);
-            }, explode(',', $blur_selector)));
-
-            if (empty($formatted_selectors)) {
-                $formatted_selectors = 'html.front18-hide img, html.front18-hide video, html.front18-hide iframe, ' . $locked_tag_selector;
-            }
+            $formatted_selectors .= ', ' . $granular_selectors;
         }
         ?>
         <!-- FRONT18: ANTI-FLICKER EXTREMO (BLINDADO CONTRA MINIFICAÇÃO) -->
         <style id="front18-antiflicker-css" data-rocket-exclude="true" data-no-optimize="1" data-no-minify="1" data-cfasync="false">
             /* Camada de Controle Flexível: Adaptável com base na configuração da Edge SaaS */
             <?php if ( $display_mode === 'granular' || $display_mode === 'blur_media' ): ?>
+            <?php if ( $protection_level === 2 || $protection_level === 3 ): ?>
+            html.front18-hide { 
+                background-color: <?php echo esc_attr($color_bg); ?> !important;
+                transition: background-color 0.3s ease; 
+            }
+            <?php endif; ?>
             html.front18-hide body { 
                 pointer-events: none !important; 
                 overflow-x: hidden !important; 
             }
             <?php echo $formatted_selectors; ?> { 
+                <?php if ( $protection_level === 3 ): ?>
+                opacity: 0 !important; display: none !important;
+                <?php elseif ( $protection_level === 2 ): ?>
+                opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; user-select: none !important;
+                <?php else: ?>
                 filter: blur(<?php echo $blur_amount; ?>px) grayscale(100%) !important;
-                opacity: 0.01 !important; /* Desfoque total para as fotos selecionadas até o JS carregar as modais */
+                user-select: none !important;
+                -webkit-user-drag: none !important;
+                <?php endif; ?>
             }
             <?php else: ?>
             html.front18-hide { 
-                opacity: 0.01 !important;
                 background-color: <?php echo esc_attr($color_bg); ?> !important;
-                transition: opacity 0.3s ease; 
+                transition: background-color 0.3s ease; 
             }
             html.front18-hide body { 
+                opacity: 0 !important;
+                visibility: hidden !important;
                 pointer-events: none !important; 
                 overflow: hidden !important; 
                 touch-action: none !important; 
@@ -120,10 +135,18 @@ class Front18_Frontend {
         if ( ! $this->should_run() ) return;
 
         $api_key       = get_option( 'front18_api_key', '' );
-        $sdk_url = get_option('front18_sdk_url', 'https://front18.com/public/sdk/front18.js');
+        $sdk_url       = get_option('front18_sdk_url', 'https://front18.com/public/sdk/front18.js');
         $global_object = get_option( 'front18_global_object', 'Front18' );
         $token_key     = get_option( 'front18_token_key', 'api-key' );
         $debug_mode    = get_option( 'front18_debug_mode', false );
+
+        $synced_config = get_option( 'front18_synced_config', array() );
+        $display_mode  = !empty($synced_config['display_mode']) ? $synced_config['display_mode'] : 'global_lock';
+        $blur_amount   = isset($synced_config['blur_amount']) ? (int)$synced_config['blur_amount'] : 25;
+        $blur_selector = !empty($synced_config['blur_selector']) ? $synced_config['blur_selector'] : 'img, video, iframe, [data-front18="locked"]';
+        $color_bg      = !empty($synced_config['color_bg']) ? $synced_config['color_bg'] : '#0f172a';
+        $color_text    = !empty($synced_config['color_text']) ? $synced_config['color_text'] : '#f8fafc';
+        $color_primary = !empty($synced_config['color_primary']) ? $synced_config['color_primary'] : '#6366f1';
 
         $parsed_url = wp_parse_url($sdk_url);
         if ($parsed_url && isset($parsed_url['scheme'], $parsed_url['host'])) {
@@ -186,6 +209,14 @@ class Front18_Frontend {
                 window.Front18Config = Object.assign({}, window.Front18Config || {}, {
                     apiKey: '<?php echo esc_js($api_key); ?>',
                     mode: '<?php echo esc_js($display_mode); ?>',
+                    level: <?php echo isset($synced_config['level']) ? (int)$synced_config['level'] : 1; ?>,
+                    blur_amount: <?php echo (int) $blur_amount; ?>,
+                    blur_selector: '<?php echo esc_js($blur_selector); ?>',
+                    theme: {
+                        bg: '<?php echo esc_js($color_bg); ?>',
+                        primary: '<?php echo esc_js($color_primary); ?>',
+                        text: '<?php echo esc_js($color_text); ?>'
+                    },
                     preventScroll: true,
                     whitelistRoutes: [],
                     protectRoutes: ['*'],

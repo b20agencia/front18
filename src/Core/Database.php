@@ -109,6 +109,8 @@ class Database {
         try { $pdo->exec("ALTER TABLE saas_dpo_reports ADD COLUMN violation_type VARCHAR(100) NULL"); } catch (\PDOException $e) {}
         try { $pdo->exec("ALTER TABLE saas_dpo_reports ADD COLUMN content_url VARCHAR(500) NULL"); } catch (\PDOException $e) {}
         try { $pdo->exec("ALTER TABLE saas_dpo_reports ADD COLUMN reporter_role VARCHAR(100) NULL"); } catch (\PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE saas_dpo_reports ADD COLUMN report_notes TEXT NULL"); } catch (\PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE saas_dpo_reports ADD COLUMN resolved_at TIMESTAMP NULL"); } catch (\PDOException $e) {}
 
         // Setup das Tabelas de Precificação, Configuração de Domínio e Atividades Suspeitas
         $pdo->exec("

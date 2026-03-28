@@ -55,8 +55,11 @@ class Front18_API {
         $config_payload = $request->get_param( 'config' );
         if ( is_array( $config_payload ) ) {
             $sanitized_config = array(
+                'level'         => isset( $config_payload['level'] ) ? (int) $config_payload['level'] : 1,
                 'display_mode'  => sanitize_text_field( $config_payload['display_mode'] ?? 'global_lock' ),
                 'color_bg'      => sanitize_hex_color( $config_payload['color_bg'] ?? '#0f172a' ) ?: '#0f172a',
+                'color_primary' => sanitize_hex_color( $config_payload['color_primary'] ?? '#6366f1' ) ?: '#6366f1',
+                'color_text'    => sanitize_hex_color( $config_payload['color_text'] ?? '#f8fafc' ) ?: '#f8fafc',
                 'blur_amount'   => isset( $config_payload['blur_amount'] ) ? (int) $config_payload['blur_amount'] : 25,
                 'blur_selector' => isset( $config_payload['blur_selector'] ) ? map_deep( wp_unslash( $config_payload['blur_selector'] ), 'sanitize_text_field' ) : 'img, video, iframe, [data-front18="locked"]',
             );
@@ -83,6 +86,8 @@ class Front18_API {
     public function get_media_library( WP_REST_Request $request ) {
         $page     = $request->get_param( 'page' ) ? (int) $request->get_param( 'page' ) : 1;
         $per_page = $request->get_param( 'per_page' ) ? (int) $request->get_param( 'per_page' ) : 48;
+        $search   = $request->get_param( 'search' ) ? sanitize_text_field( wp_unslash( $request->get_param( 'search' ) ) ) : '';
+        $folder   = $request->get_param( 'folder' ) ? sanitize_text_field( wp_unslash( $request->get_param( 'folder' ) ) ) : '';
         
         $args = array(
             'post_type'      => 'attachment',
@@ -93,6 +98,18 @@ class Front18_API {
             'orderby'        => 'date',
             'order'          => 'DESC'
         );
+
+        if ( ! empty( $search ) ) {
+            $args['s'] = $search;
+        }
+
+        if ( ! empty( $folder ) && $folder !== 'all' ) {
+            $parts = explode( '/', $folder );
+            if ( count( $parts ) === 2 ) {
+                $args['year']     = (int) $parts[0];
+                $args['monthnum'] = (int) $parts[1];
+            }
+        }
         
         $query = new WP_Query( $args );
         $media = array();
@@ -110,44 +127,67 @@ class Front18_API {
             );
         }
 
-        // Ghost Scanner V2.0: Scraper Direto de Banco de Dados (Bypassa Cloudflare e CSS Externo do Elementor)
+        $folders_data = array();
+
+        // Ghost Scanner V2.0 e Scraper de Pastas
         if ( $page === 1 ) {
             global $wpdb;
-            $ghost_media = array();
-            $ghost_dict  = get_option( 'front18_ghost_media_dict', array() );
             
-            // Reúne todos os JSONs de páginas locais e opções de Temas (Customizer)
-            $elementor = $wpdb->get_col( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_elementor_data'" );
-            $themes    = $wpdb->get_col( "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE 'theme_mods_%'" );
+            // 1. Extrai todas as pastas/tamanhos ativos do servidor para o Dropdown Front18
+            $months = $wpdb->get_results( "
+                SELECT DISTINCT YEAR( post_date ) AS year, MONTH( post_date ) AS month
+                FROM $wpdb->posts
+                WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
+                ORDER BY post_date DESC
+            " );
             
-            // Fusão Limpa da Estrutura do Site (Removendo escapes de JSON)
-            $big_string = stripslashes( implode( ' ', array_merge( $elementor, $themes ) ) );
-            
-            // Regex Cirúrgica: Extrai qualquer URL que pareça uma fotografia ou banner de estrutura de Layout Isolado
-            preg_match_all( '/(https?:\/\/[^"\',\\\\\}\{\s\(\)]+\.(?:png|jpg|jpeg|webp))/i', $big_string, $matches );
-            
-            if ( ! empty( $matches[1] ) ) {
-                $urls = array_unique( $matches[1] );
-                foreach ( $urls as $ghost_url ) {
-                    // Força a exposição de TODAS as mídias do layout. 
-                    // Mesmo que o WP conheça a imagem, o MimeType dela pode estar corrompido, escondendo-a do SaaS.
-                    $fake_id = abs( crc32( $ghost_url ) ); // ID seguro e único baseado no texto
-                    
-                    $ghost_dict[ $fake_id ] = $ghost_url;
-                    $ghost_media[] = array(
-                        'id'    => $fake_id,
-                        'title' => 'Ghost Tracker (Elementor/Background)',
-                        'url'   => $ghost_url
-                    );
-                }
+            foreach ( $months as $month ) {
+                if ( empty($month->year) || empty($month->month) ) continue;
+                $month_str = zeroise( $month->month, 2 );
+                $folders_data[] = array(
+                    'label' => date_i18n( 'F Y', mktime( 0, 0, 0, $month->month, 1, $month->year ) ),
+                    'value' => $month->year . '/' . $month_str
+                );
             }
-            
-            if ( ! empty( $ghost_media ) ) {
-                update_option( 'front18_ghost_media_dict', $ghost_dict );
-                // Insere os fantasmas no início da matriz do SaaS
-                $media = array_merge( $ghost_media, $media );
-                // Atualiza o contador de itens da Query para que o SaaS exiba o número aumentado
-                $query->found_posts += count( $ghost_media );
+
+            // 2. Ghost Tracker entra em ação só se não houver pesquisa explícita
+            if ( empty($search) && (empty($folder) || $folder === 'all') ) {
+                $ghost_media = array();
+                $ghost_dict  = get_option( 'front18_ghost_media_dict', array() );
+                
+                // Reúne todos os JSONs de páginas locais e opções de Temas (Customizer)
+                $elementor = $wpdb->get_col( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_elementor_data'" );
+                $themes    = $wpdb->get_col( "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE 'theme_mods_%'" );
+                
+                // Fusão Limpa da Estrutura do Site (Removendo escapes de JSON)
+                $big_string = stripslashes( implode( ' ', array_merge( $elementor, $themes ) ) );
+                
+                // Regex Cirúrgica: Extrai qualquer URL que pareça uma fotografia ou banner de estrutura de Layout Isolado
+                preg_match_all( '/(https?:\/\/[^"\',\\\\\}\{\s\(\)]+\.(?:png|jpg|jpeg|webp))/i', $big_string, $matches );
+                
+                if ( ! empty( $matches[1] ) ) {
+                    $urls = array_unique( $matches[1] );
+                    foreach ( $urls as $ghost_url ) {
+                        // Força a exposição de TODAS as mídias do layout. 
+                        // Mesmo que o WP conheça a imagem, o MimeType dela pode estar corrompido, escondendo-a do SaaS.
+                        $fake_id = abs( crc32( $ghost_url ) ); // ID seguro e único baseado no texto
+                        
+                        $ghost_dict[ $fake_id ] = $ghost_url;
+                        $ghost_media[] = array(
+                            'id'    => $fake_id,
+                            'title' => 'Ghost Tracker (Elementor/Background)',
+                            'url'   => $ghost_url
+                        );
+                    }
+                }
+                
+                if ( isset($ghost_media) && ! empty( $ghost_media ) ) {
+                    update_option( 'front18_ghost_media_dict', $ghost_dict );
+                    // Insere os fantasmas no início da matriz do SaaS
+                    $media = array_merge( $ghost_media, $media );
+                    // Atualiza o contador de itens da Query para que o SaaS exiba o número aumentado
+                    $query->found_posts += count( $ghost_media );
+                }
             }
         }
         
@@ -159,6 +199,7 @@ class Front18_API {
             'total_pages'   => $query->max_num_pages,
             'current_page'  => $page,
             'protected_ids' => is_array($protected_ids) ? array_map('intval', $protected_ids) : array(),
+            'folders'       => $page === 1 ? $folders_data : null,
             'data'          => $media
         ) );
     }

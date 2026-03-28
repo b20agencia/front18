@@ -17,7 +17,7 @@
     if (document.documentElement && !document.getElementById('f18-fouc-shield')) {
         let esc = document.createElement('style');
         esc.id = 'f18-fouc-shield';
-        esc.textContent = 'html.F18-Early img, html.F18-Early video, html.F18-Early iframe, html.F18-Early picture, html.F18-Early .elementor-section[data-settings*="background_background"], html.F18-Early .e-parent[data-settings*="background_background"], html.F18-Early [data-front18="locked"], html.F18-Early .wp-block-cover { filter: blur(35px) grayscale(80%) !important; opacity:0.3 !important; pointer-events:none !important; } .front18-hide { opacity: 0 !important; }';
+        esc.textContent = 'html.F18-Early img, html.F18-Early video, html.F18-Early iframe, html.F18-Early picture, html.F18-Early .elementor-section[data-settings*="background_background"], html.F18-Early .e-parent[data-settings*="background_background"], html.F18-Early [data-front18="locked"], html.F18-Early .wp-block-cover { filter: blur(35px) grayscale(80%) !important; pointer-events:none !important; }';
         document.documentElement.appendChild(esc);
         document.documentElement.classList.add('F18-Early');
     }
@@ -352,14 +352,19 @@
                     .f18-back-btn { font-size: 12px; opacity: 0.6; cursor: pointer; font-weight: 600; display:flex; align-items:center; gap: 4px; }
                     .f18-back-btn:hover { opacity: 1; }
 
-                    /* Emergency Card */
-                    .f18-em-card { background: rgba(220, 38, 38, 0.1); border: 1px solid rgba(220, 38, 38, 0.2); border-radius: 8px; padding: 12px; margin-top: 12px; }
-                    .f18-em-title { font-size: 11px; font-weight: 800; color: #fca5a5; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
-                    .f18-em-links { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-                    .f18-em-links a { background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: white; text-decoration: none; display: flex; flex-direction: column; text-align: center; border: 1px solid transparent; transition: 0.2s; }
-                    .f18-em-links a:hover { border-color: rgba(220, 38, 38, 0.4); background: rgba(220, 38, 38, 0.15); }
-                    .f18-em-links a span { font-size: 9px; opacity: 0.6; font-weight: 400; text-transform: uppercase; margin-top: 2px; }
-                    .f18-em-links a.full { grid-column: 1 / -1; }
+                    /* Scrollbar Styling */
+                    #Front18-privacy-banner *::-webkit-scrollbar { width: 4px; }
+                    #Front18-privacy-banner *::-webkit-scrollbar-track { background: transparent; }
+                    #Front18-privacy-banner *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+                    #Front18-privacy-banner *::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+                    /* Emergency Card (Discrete) */
+                    .f18-em-card { border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 12px; margin-top: 12px; text-align: center; }
+                    .f18-em-title { font-size: 9px; font-weight: 600; color: rgba(255, 255, 255, 0.2); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+                    .f18-em-links { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+                    .f18-em-links a { font-size: 10px; font-weight: 500; color: rgba(255, 255, 255, 0.3); text-decoration: none; transition: all 0.2s; display: flex; align-items: center; gap: 4px; }
+                    .f18-em-links a:hover { color: rgba(220, 38, 38, 0.7); }
+                    .f18-em-links a span { opacity: 0.8; font-weight: normal; }
 
                     @media (max-width: 480px) {
                         #Front18-privacy-banner { bottom: 0; left: 0; right: 0; max-width: 100%; border-radius: 16px 16px 0 0; padding: 20px; border-bottom: none; border-left: none; border-right: none; }
@@ -393,19 +398,51 @@
                         ${pc.banner_text || 'Nosso Cérebro processa dados para finalidades ligadas ao fornecimento da plataforma e segurança antifraude.'}
                     </div>
                     
-                    ${pc.allow_reject ? `
-                    <div class="f18-toggles-wrap" style="max-height: 100px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 14px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:6px; opacity:0.6; align-items:center;">
-                            <div><div style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px;">Essenciais (Nível B2B) ${UI_ICONS.lock}</div><div style="font-size:10px;opacity:0.8">Motor do Front18. (Sempre Ativo)</div></div>
-                            <label class="f18-switch" style="cursor:not-allowed; opacity:0.7"><input type="checkbox" checked disabled><span class="f18-slider" style="cursor:not-allowed"></span></label>
-                        </div>
-                        <div style="display:flex; justify-content:space-between;">
-                            <div><div style="font-size:12px;font-weight:700">Analíticos e Marketing</div><div style="font-size:10px;opacity:0.6">Velocidade e Métricas.</div></div>
-                            <label class="f18-switch"><input type="checkbox" id="f18-chk-analytics" checked><span class="f18-slider"></span></label>
-                        </div>
-                    </div>` : `
-                    <input type="checkbox" id="f18-chk-analytics" checked style="display:none;">
-                    `}
+                    ${(() => {
+                        if (!pc.allow_reject) {
+                            let h = '';
+                            if (pc.has_analytics) h += '<input type="checkbox" id="f18-chk-analytics" checked style="display:none;">';
+                            if (pc.has_marketing) h += '<input type="checkbox" id="f18-chk-marketing" checked style="display:none;">';
+                            if (pc.has_meta) h += '<input type="checkbox" id="f18-chk-meta" checked style="display:none;">';
+                            if (pc.has_tiktok) h += '<input type="checkbox" id="f18-chk-tiktok" checked style="display:none;">';
+                            if (pc.has_heatmaps) h += '<input type="checkbox" id="f18-chk-heatmaps" checked style="display:none;">';
+                            return h;
+                        }
+
+                        const buildToggle = (id, title, desc, details) => `
+                            <details style="margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                                <summary style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; list-style:none;">
+                                    <div>
+                                        <div style="font-size:12px; font-weight:700; display:flex; align-items:center; gap:4px;">
+                                            ${title} 
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5; margin-left: 2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                        <div style="font-size:10px; opacity:0.6">${desc}</div>
+                                    </div>
+                                    <label class="f18-switch" onclick="event.stopPropagation();"><input type="checkbox" id="f18-chk-${id}" checked><span class="f18-slider"></span></label>
+                                </summary>
+                                <div style="font-size:10px; opacity:0.7; margin-top:10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 6px; line-height:1.4;">
+                                    ${details}
+                                </div>
+                            </details>
+                        `;
+
+                        let opts = '';
+                        if (pc.has_analytics) opts += buildToggle('analytics', 'Analytics (GA4)', 'Monitoramento de tráfego.', 'Cookies do Google Analytics usados para entender como os visitantes interagem com o site. Nenhuma PII (informação pessoal identificável) é persistida.');
+                        if (pc.has_marketing) opts += buildToggle('marketing', 'Módulo AdSense', 'Anúncios de display.', 'Rastreadores embutidos para fornecer anúncios sensíveis e gerar receita. Desativar enviará anúncios genéricos.');
+                        if (pc.has_meta) opts += buildToggle('meta', 'Meta Pixel (Ads)', 'Direcionamento de campanhas.', 'Rastreadores da Meta (Facebook/Instagram) usados para medir conversões de anúncios e remarketing.');
+                        if (pc.has_tiktok) opts += buildToggle('tiktok', 'TikTok Pixel', 'Métricas de vídeos.', 'Tags do TikTok usadas para identificar retorno de investimento (ROI) em anúncios da rede social. Cruza IDs anônimos com contas TikTok.');
+                        if (pc.has_heatmaps) opts += buildToggle('heatmaps', 'Heatmaps (Hotjar)', 'Gravação de Experiência.', 'Scripts que gravam movimentos de mouse para o desenvolvedor melhorar o design da página. Senhas são borradas nativamente.');
+
+                        return `
+                        <div class="f18-toggles-wrap custom-scrollbar" style="max-height: 180px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 14px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:12px; opacity:0.6; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                                <div><div style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px;">Essenciais (Nível B2B) ${UI_ICONS.lock}</div><div style="font-size:10px;opacity:0.8">Segurança e Engine. (Obrigatório)</div></div>
+                                <label class="f18-switch" style="cursor:not-allowed; opacity:0.7"><input type="checkbox" checked disabled><span class="f18-slider" style="cursor:not-allowed"></span></label>
+                            </div>
+                            ${opts}
+                        </div>`;
+                    })()}
 
                     <div class="f18-priv-btns">
                         <button class="f18-priv-btn accept" id="f18-btn-save-prefs">${pc.btn_accept || 'Salvar Escolhas e Fechar'}</button>
@@ -512,8 +549,24 @@
             // Save Prefs
             document.getElementById('f18-btn-save-prefs').addEventListener('click', (e) => {
                 e.stopPropagation();
-                const isAnElement = document.getElementById('f18-chk-analytics');
-                localStorage.setItem('Front18_privacy_accepted', JSON.stringify({ analytics: isAnElement ? isAnElement.checked : true }));
+                
+                const getToggleState = (id) => {
+                    const el = document.getElementById('f18-chk-' + id);
+                    return el ? el.checked : true;
+                };
+
+                const prefs = {
+                    analytics: getToggleState('analytics'),
+                    marketing: getToggleState('marketing'),
+                    meta: getToggleState('meta'),
+                    tiktok: getToggleState('tiktok'),
+                    heatmaps: getToggleState('heatmaps')
+                };
+
+                localStorage.setItem('Front18_privacy_accepted', JSON.stringify(prefs));
+
+                // Dispatch global event so site owners can hook into JS directly
+                window.dispatchEvent(new CustomEvent('front18:privacyReconfigured', { detail: prefs }));
 
                 // Hide view cleanly 
                 viewDpo.classList.remove('active');
@@ -566,6 +619,14 @@
         },
 
         run: function () {
+            // Remove a opacidade global de 1% injetada in-line pelo PHP (Anti-CDN Caching)
+            // Isso permite que o HTML inteiro brilhe e exiba NOSSA Janela SVG (Modal JS).
+            // O conteúdo real continuará oculto no escuro pelas regras nativas de .front18-hide body > * !
+            if (document.documentElement && document.documentElement.style) {
+                document.documentElement.style.removeProperty('opacity');
+                document.documentElement.style.removeProperty('pointer-events');
+            }
+
             this.injectStyles();
 
             if (this.config.mode === 'blur_media') {
@@ -593,7 +654,10 @@
             if (typeof window.Front18Release === 'function') {
                 window.Front18Release();
             }
-            document.documentElement.classList.remove('front18-hide', 'F18-Early', 'Front18-no-scroll');
+            // Apenas remove a máscara do JavaScript de primeiro frame (FOUC).
+            // A blindagem do WordPress (front18-hide) NÃO É REMOVIDA AQUI para evitar Flicker!
+            // Ela continuará blindando tudo até que a pessoa conclua o desafio biométrico/idade.
+            document.documentElement.classList.remove('F18-Early');
         },
 
         checkRoute: function () {
@@ -610,12 +674,17 @@
             this.elements.style = document.createElement('style');
             this.elements.style.id = 'Front18-styles';
 
-            // Dinâmica dos Níveis de Proteção WAF (Sincronizados do Banco de Dados)
-            let fxLocked = 'filter: blur(20px) !important;';
-            let fxFallback = 'filter: blur(20px) grayscale(100%) !important; pointer-events: none !important; user-select: none !important; overflow: hidden !important;';
+            let blurVal = this.config.blur_amount || 25;
+            let fxLocked = `filter: blur(${blurVal}px) !important;`;
+            let fxFallback = `filter: blur(${blurVal}px) grayscale(100%) !important; pointer-events: none !important; user-select: none !important; overflow: hidden !important;`;
+
+            // Garante que o root inteiro puxe a cor de fundo (Color BG) caso isolamento máximo seja exigido
+            if (this.config.level == 2 || this.config.level == 3) {
+                document.documentElement.style.backgroundColor = this.config.theme ? this.config.theme.bg : '#0f172a';
+            }
 
             if (this.config.level == 2) {
-                fxLocked = 'filter: brightness(0) !important; pointer-events:none !important; user-select: none !important;';
+                fxLocked = 'opacity: 0 !important; visibility: hidden !important; pointer-events:none !important; user-select: none !important;';
                 fxFallback = fxLocked;
             } else if (this.config.level == 3) {
                 fxLocked = 'opacity: 0 !important; display: none !important;';
@@ -636,7 +705,7 @@
                 
                 #Front18-overlay {
                     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                    background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); z-index: 2147483647;
+                    background: color-mix(in srgb, var(--ag-bg) 85%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); z-index: 2147483647;
                     display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.5s ease, visibility 0.5s ease;
                 }
                 #Front18-overlay.Front18-active { opacity: 1; visibility: visible; }
@@ -688,17 +757,17 @@
                 }
                 html.Front18-blur-active .Front18-smart-container-blurred > * {
                     pointer-events: none !important;
-                    transition: all 0.3s ease !important;
                 }
                 html.Front18-blur-active .Front18-smart-container-blurred {
                     position: relative !important;
                     overflow: hidden !important;
                     clip-path: inset(0px) !important;
                 }
-                /* Eleva inteligentemente todos os Textos e Botões pro Topo (Layer Astronômico) */
+                /* Proteção Passiva de Nós-Filho: Impede a visualização vazada de textos caso o cliente não use Elementor.
+                   Retiramos o z-index: 999999 que havia antes e deixamos a camada de escudo atuar organicamente. */
                 html.Front18-blur-active .Front18-smart-container-blurred > :not(.Front18-shield-overlay):not(.elementor-background-overlay):not(.elementor-motion-effects-layer):not(.e-con-inner) {
-                    position: relative !important;
-                    z-index: 999999 !important;
+                    filter: blur(calc(${blurVal}px / 3)) !important;
+                    user-select: none !important;
                 }
                 html.Front18-blur-active .Front18-shield-overlay {
                     display: block !important;
@@ -706,9 +775,9 @@
                     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
                     width: 100% !important; height: 100% !important;
                     z-index: 999998 !important; /* Extrapolação Extrema: Garantia de cobertura frontal (Teste de Estresse) */
-                    background: rgba(15, 23, 42, 0.85) !important;
-                    backdrop-filter: blur(25px) grayscale(40%) !important;
-                    -webkit-backdrop-filter: blur(25px) grayscale(40%) !important;
+                    background: color-mix(in srgb, var(--ag-bg) 85%, transparent) !important;
+                    backdrop-filter: blur(${blurVal}px) grayscale(40%) !important;
+                    -webkit-backdrop-filter: blur(${blurVal}px) grayscale(40%) !important;
                     pointer-events: none !important;
                     border-radius: inherit !important;
                 }
@@ -720,7 +789,7 @@
                     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
                     width: 100% !important; height: 100% !important;
                     z-index: 1000000 !important;
-                    background: rgba(15, 23, 42, 0.5) !important;
+                    background: color-mix(in srgb, var(--ag-bg) 50%, transparent) !important;
                     pointer-events: none !important;
                 }
                 
@@ -734,7 +803,7 @@
                     left: 50% !important;
                     transform: translate(-50%, -50%) !important;
                     z-index: 1000001 !important;
-                    background: rgba(15, 23, 42, 0.85) !important;
+                    background: color-mix(in srgb, var(--ag-bg) 85%, transparent) !important;
                     border: 1px solid rgba(255, 255, 255, 0.1) !important;
                     color: #f8fafc !important;
                     padding: 10px 16px !important;
@@ -758,21 +827,21 @@
                 }
                 
                 html.Front18-blur-active .Front18-smart-container-blurred:hover::before {
-                    background: rgba(15, 23, 42, 0.92) !important;
+                    background: color-mix(in srgb, var(--ag-bg) 95%, transparent) !important;
                 }
                 html.Front18-blur-active .Front18-media-wrapper-premium:hover::before {
-                    backdrop-filter: blur(25px) grayscale(50%) saturate(0.5) !important;
-                    -webkit-backdrop-filter: blur(25px) grayscale(50%) saturate(0.5) !important;
-                    background: rgba(15, 23, 42, 0.5) !important;
+                    backdrop-filter: blur(${blurVal}px) grayscale(50%) saturate(0.5) !important;
+                    -webkit-backdrop-filter: blur(${blurVal}px) grayscale(50%) saturate(0.5) !important;
+                    background: color-mix(in srgb, var(--ag-bg) 50%, transparent) !important;
                 }
                 html.Front18-blur-active .Front18-smart-container-blurred:hover::after {
-                    background: #6366f1 !important;
+                    background: var(--ag-primary) !important;
                     color: white !important;
                     content: "🔓 LIBERAR ACESSO" !important;
                     transform: translate(-50%, -50%) scale(1.05) !important;
                 }
                 html.Front18-blur-active .Front18-media-wrapper-premium:hover::after {
-                    background: #6366f1 !important;
+                    background: var(--ag-primary) !important;
                     color: white !important;
                     content: "🔓 LIBERAR ACESSO" !important;
                     transform: scale(1.05) !important;
@@ -786,7 +855,7 @@
                     vertical-align: top;
                     overflow: hidden !important; /* Contain blur edges perfectly */
                     cursor: pointer !important;
-                    background: #0f172a !important; /* Backup background */
+                    background: var(--ag-bg) !important; /* Backup background dinâmico do painel */
                 }
                 .Front18-media-wrapper-premium > .Front18-media-blurred {
                     grid-area: 1 / 1 !important;
@@ -798,7 +867,7 @@
                 html.Front18-blur-active .Front18-media-blurred { 
                     cursor: pointer !important; 
                     opacity: 0.8 !important; /* Mantém a mídia visível para gerar teaser */
-                    filter: blur(25px) grayscale(40%) !important; 
+                    filter: blur(${blurVal}px) grayscale(40%) !important; 
                     transform: scale(1.1) !important; /* Previne bordas vazadas do blur */
                     -webkit-user-drag: none !important; /* MATA GHOST DRAG NO CHROME */
                     user-drag: none !important;
@@ -831,16 +900,18 @@
             setTimeout(() => {
                 // 1. Matriz Granular: Usa a lista exata do SaaS ou fallback para o seletor padrão
                 let customSelectors = [];
-                if (this.config.protected_media_ids && this.config.protected_media_ids.length > 0) {
-                    this.config.protected_media_ids.forEach(id => customSelectors.push('.wp-image-' + id + ', .attachment-' + id));
-                    
-                    // Failsafe: Quando se usa Granular, se garantimos que a página não fique toda invisivel caso de FOUC
-                    let f18Style = document.getElementById('f18-fouc-shield');
-                    if (f18Style) f18Style.textContent = ''; 
-                } else if (this.config.blur_selector) {
+                // Se existe seletor de blur personalizado, sempre aplica. Se não, fallback pro listão padrão.
+                if (this.config.blur_selector) {
                     customSelectors = this.config.blur_selector.split(',');
                 } else {
                     customSelectors = ['img', 'video', 'iframe', 'picture', 'source'];
+                }
+                // Adiciona a Granularidade Somada, e não excludente! (Sempre junta IDs selecionadas com as regras gerais)
+                if (this.config.protected_media_ids && this.config.protected_media_ids.length > 0) {
+                    this.config.protected_media_ids.forEach(id => customSelectors.push('.wp-image-' + id + ', .attachment-' + id));
+                    
+                    let f18Style = document.getElementById('f18-fouc-shield');
+                    if (f18Style && !this.config.blur_selector) f18Style.textContent = ''; 
                 }
                 
                 let rawMedias = [];
@@ -2355,7 +2426,7 @@
             if (this.elements.overlay) this.elements.overlay.classList.remove('Front18-active');
 
             // Garantia de limpeza completa, não importando qual config.mode o servidor resolveu!
-            document.documentElement.classList.remove('Front18-blur-active', 'Front18-no-scroll');
+            document.documentElement.classList.remove('front18-hide', 'Front18-blur-active', 'Front18-no-scroll');
 
             if (this.config.mode === 'blur_media') {
                 if (this.lazyObserver) { this.lazyObserver.disconnect(); this.lazyObserver = null; }

@@ -40,22 +40,22 @@
 }
 
 :root {
-  --bg-canvas: #0B0E11;
-  --bg-surface: #1A1F25;
-  --primary-accent: #00DD80;
-  --primary-hover: #00C270;
-  --text-main: #FFFFFF;
-  --text-muted: #94A3B8;
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --shadow-glow: rgba(0, 221, 128, 0.2);
+  --bg-canvas: #EFF3F4;
+  --bg-surface: #FFFFFF;
+  --primary-accent: #EA5944;
+  --primary-hover: #FD8972;
+  --text-main: #190C3A;
+  --text-muted: #2D0F65;
+  --border-subtle: rgba(25, 12, 58, 0.1);
+  --shadow-glow: rgba(234, 89, 68, 0.25);
   --bg: var(--bg-canvas);
-  --bg2: #12161a;
+  --bg2: #E5EAF0;
   --bg3: var(--bg-surface);
   --surface: var(--bg-surface);
   --border: var(--border-subtle);
   --text: var(--text-main);
   --dim: var(--text-muted);
-  --muted: #5e6c84;
+  --muted: #4c556b;
   --accent: var(--primary-accent);
   --alight: var(--primary-hover);
   --pink: #00DD80;

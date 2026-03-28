@@ -1178,7 +1178,40 @@
             this.elements.overlay.id = 'Front18-overlay';
             this.elements.overlay.setAttribute('aria-hidden', 'false');
             this.elements.overlay.setAttribute('aria-modal', 'true');
+            
+            // Event delegation global para o botão FECHAR (X) em todas as telas injetadas
+            this.elements.overlay.addEventListener('click', (e) => {
+                if (e.target.closest('.Front18-btn-close-modal')) {
+                    this.closeVerificationModal();
+                }
+            });
             document.body.appendChild(this.elements.overlay);
+        },
+
+        closeVerificationModal: function() {
+            window.__f18ScanIsCancelled = true;
+            if (this._reqFrame) cancelAnimationFrame(this._reqFrame);
+            // stop media tracks
+            const camVideo = document.getElementById('ag-cam-feed');
+            if (camVideo && camVideo.srcObject) camVideo.srcObject.getTracks().forEach(t => t.stop());
+            const docVideo = document.getElementById('Front18-doc-video');
+            if (docVideo && docVideo.srcObject) docVideo.srcObject.getTracks().forEach(t => t.stop());
+
+            if (this.elements.overlay) {
+                this.elements.overlay.classList.remove('Front18-active');
+                setTimeout(() => { 
+                    this.elements.overlay.style.display = 'none'; 
+                    // Se o usuário fechar voluntariamente, desobstrui a tela em background para permitir recomeçar o scanner via clique.
+                    if (this.elements.rootWrapper) this.elements.rootWrapper.classList.remove('Front18-locked');
+                    document.body.classList.remove('Front18-locked-fallback');
+                    document.documentElement.classList.remove('Front18-no-scroll');
+                    
+                    // Remove do DOM para recriar 100% fresco do zero se o usuário invocar novamente
+                    if (this.elements.overlay.parentNode) {
+                        this.elements.overlay.parentNode.removeChild(this.elements.overlay);
+                    }
+                }, 300);
+            }
         },
 
         createModal: function () {
@@ -1197,6 +1230,7 @@
             const strNo = mc.btn_no || 'Sou menor de idade (Sair)';
 
             this.elements.modal.innerHTML = `
+                <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Verificação">✕</button>
                 <div class="Front18-badge">
                     <img src="${saasHost}/public/img/favicon.png" style="width:16px; height:16px; margin-right:6px; object-fit:contain; filter:brightness(2) drop-shadow(0 0 2px rgba(255,255,255,0.5));" onerror="this.style.display='none'">
                     RESTRIÇÃO DE IDADE
@@ -1401,6 +1435,7 @@
             if(!modalContent) return;
             
             modalContent.innerHTML = `
+                <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Verificação">✕</button>
                 <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
                     <div style="text-align:center; margin-bottom:24px;">
                         <h3 style="color:var(--ag-text); font-size:20px; font-weight:700; margin:0 0 8px;">Método de Validação</h3>
@@ -1452,6 +1487,7 @@
         showBiometricChoices: function() {
             const modalContent = document.getElementById('Front18-modal');
             modalContent.innerHTML = `
+                <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Verificação">✕</button>
                 <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
                     <div style="margin-bottom:20px; display:flex; align-items:center; gap:16px;">
                         <button id="Front18-btn-back-root1" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
@@ -1501,6 +1537,7 @@
         showComputerLevels: function() {
             const modalContent = document.getElementById('Front18-modal');
             modalContent.innerHTML = `
+                <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Verificação">✕</button>
                 <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
                     <div style="margin-bottom:20px; display:flex; align-items:center; gap:16px;">
                         <button id="Front18-btn-back-bio" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
@@ -1558,6 +1595,7 @@
         showDocumentChoices: function() {
             const modalContent = document.getElementById('Front18-modal');
             modalContent.innerHTML = `
+                <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Verificação">✕</button>
                 <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
                     <div style="margin-bottom:24px; display:flex; align-items:center; gap:16px;">
                         <button id="Front18-btn-back-root2" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
@@ -1617,6 +1655,7 @@
         showDocumentTips: function(docName) {
             const modalContent = document.getElementById('Front18-modal');
             modalContent.innerHTML = `
+                <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Verificação">✕</button>
                 <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
                     <div style="margin-bottom:20px; display:flex; align-items:center; gap:16px;">
                         <button id="Front18-btn-back-docs" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
@@ -1664,6 +1703,7 @@
         startDocumentScan: async function(docName) {
             const modalContent = document.getElementById('Front18-modal');
             modalContent.innerHTML = `
+                <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Câmera">✕</button>
                 <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
                     <div style="position:relative; width:100%; height:320px; background:#000; border-radius:12px; overflow:hidden; margin-bottom:16px; border:2px solid var(--ag-primary);">
                         <video id="Front18-doc-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
@@ -1774,6 +1814,7 @@
                     const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(mobileUrl)}`;
                     
                     modalContent.innerHTML = `
+                        <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Verificação">✕</button>
                         <div style="text-align:center; animation: agFadeIn 0.5s forwards;">
                             <h3 style="color:var(--ag-text); font-size:20px; font-weight:700; margin:0 0 16px;">📱 Verificar com Celular</h3>
                             <p style="color:rgba(255,255,255,0.7); font-size:13px; line-height:1.6; margin-bottom:24px;">Use a câmera do seu celular para ler o <strong>QR Code</strong> abaixo.<br>Não feche esta janela, ela destravará magicamente na sua frente após terminar pelo celular.</p>
@@ -1844,6 +1885,7 @@
 
             const modalContent = document.getElementById('Front18-modal');
             modalContent.innerHTML = `
+                <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.05); border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair da Verificação">✕</button>
                 <div style="text-align:center;">
                    <div style="display:flex; justify-content:center; align-items:center; margin-bottom:10px; position:relative;">
                        <button id="ag-btn-cancel-scan" style="position:absolute; left:0; background:rgba(255,255,255,0.08); border:none; color:#fff; border-radius:8px; width:28px; height:28px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index: 5;" title="Sair da Câmera (Cancelar)">

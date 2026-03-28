@@ -46,6 +46,7 @@ window.Front18OCR = {
         const modalContent = document.getElementById('Front18-modal');
         
         modalContent.innerHTML = `
+            <button class="Front18-btn-close-modal" aria-label="Fechar" style="position:absolute; top:12px; right:12px; background:transparent; border:none; color:rgba(255,255,255,0.4); width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:100; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'" title="Sair do Scanner">✕</button>
             <div style="text-align:left; animation: agFadeIn 0.3s forwards;">
                 <div style="margin-bottom:24px; text-align:center;">
                     <h3 style="color:var(--ag-text); font-size:20px; font-weight:700; margin:0 0 4px;">Módulo OCR Lançado</h3>

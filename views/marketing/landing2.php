@@ -62,7 +62,7 @@ catch (Exception $e) {
     <nav class="nav">
         <div class="nav-inner">
             <div class="nav-brand">
-                <a href="?route=landing2" style="display:flex; align-items:center;">
+                <a href="#" onclick="window.location.reload(); return false;" style="display:flex; align-items:center; cursor:pointer;" title="Recarregar">
                     <img src="public/img/logo.png" alt="Front18 Logo" style="height: 24px; object-fit: contain;">
                 </a>
             </div>
@@ -1447,6 +1447,72 @@ endif; ?>
                 start: "top top",
                 end: "bottom top",
                 scrub: true
+            }
+        });
+    </script>
+    <!-- Botão Scroll-to-Top -->
+    <a href="#" id="backToTop" class="back-to-top" title="Voltar ao início">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+    </a>
+    
+    <style>
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #190C3A, #2D0F65);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(25, 12, 58, 0.3);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+        }
+        .back-to-top:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(234, 89, 68, 0.4);
+            color: #FD8972;
+            background: linear-gradient(135deg, #2D0F65, #190C3A);
+        }
+        .back-to-top.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .back-to-top svg {
+            width: 24px;
+            height: 24px;
+        }
+        @media (max-width: 768px) {
+            .back-to-top { bottom: 20px; right: 20px; width: 45px; height: 45px; }
+        }
+    </style>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var btnTop = document.getElementById("backToTop");
+            if(btnTop) {
+                window.addEventListener("scroll", function() {
+                    if(window.scrollY > 400) {
+                        btnTop.classList.add("show");
+                    } else {
+                        btnTop.classList.remove("show");
+                    }
+                });
+                btnTop.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    window.scrollTo({top: 0, behavior: 'smooth'});
+                });
             }
         });
     </script>

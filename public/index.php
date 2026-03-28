@@ -28,11 +28,12 @@ if (empty($route) || $route === '/' || $route === 'index.php') {
 // Central de Rotas de Proteção
 switch ($route) {
     case 'landing':
-        require __DIR__ . '/../views/marketing/landing.php';
+        // Nova landing oficial modernizada (Light/Glassmorphism)
+        require __DIR__ . '/../views/marketing/landing2.php';
         break;
         
-    case 'landing2':
-        require __DIR__ . '/../views/marketing/landing2.php';
+    case 'landing_antiga':
+        require __DIR__ . '/../views/marketing/landing.php';
         break;
         
     case 'login':

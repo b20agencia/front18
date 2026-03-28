@@ -82,81 +82,392 @@ catch (Exception $e) {
         de idade podem ser multados a qualquer momento.
     </div>
 
-    <!-- HERO -->
-    <section class="hero">
-        <div class="hero-eyebrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"
-                style="vertical-align:-2px">
-                <circle cx="12" cy="12" r="10" />
-            </svg> ATENÇÃO: Seu site pode estar IRREGULAR agora</div>
-        <h1>
-            Seu site pode levar uma<br>
-            <span class="highlight">multa de R$ 50 milhões</span><br>
-            <span class="grad">Resolva em 30 segundos</span>
-        </h1>
-        <p class="lead">
-            A <strong>Lei FELCA (15.211/2025)</strong> exige verificação de idade em sites com conteúdo restrito.
-            O <strong>Decreto 12.880/2026</strong> regulamentou com prazo imediato. O Front18 é a <strong>catraca de
-                biometria facial</strong> que garante conformidade total.
-        </p>
-        <div class="hero-ctas">
-            <a href="#planos" class="btn-lg btn-danger"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2">
-                    <path
-                        d="M8.5 14.5A2.5 2.5 0 0 0 11 12c-2.2-.6-3.8-2.6-4.5-5-.4-1.2-1.3-1.8-2.5-1.5a5.5 5.5 0 0 0 10 9c.7-2.2 0-4.6-2-6 1.4 3 0 6.5-2.5 8" />
-                </svg> Proteger Meu Site Agora</a>
-            <a href="mailto:comercial@front18.com?subject=Consultoria%20de%20Proteção%20LGPD" class="btn-lg btn-ghost"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
-                </svg> Agendar Consultoria Grátis</a>
-        </div>
-        <div class="hero-proof">
-            <span class="stars" style="display:inline-flex;gap:2px;color:var(--yellow)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-            </span>
-            <span>4.9/5 — 127 sites protegidos</span>
-            <span>|</span>
-            <span style="display:inline-flex;align-items:center;gap:6px;"><span
-                    style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--primary-accent);box-shadow:0 0 8px var(--primary-accent);"></span>
-                99.9% uptime</span>
+    <!-- ESTILOS ANTIGRAVITY HERO (Importados e adaptados para Landing 2) -->
+    <style>
+        .hero-antigravity {
+            position: relative;
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            background: #050505; /* Deep dark */
+            padding-top: 80px;
+        }
+        .hero-antigravity::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: 
+                radial-gradient(circle at 30% 70%, rgba(230, 0, 0, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 70% 30%, rgba(0, 221, 128, 0.1) 0%, transparent 40%);
+            animation: antigravPulse 15s ease-in-out infinite alternate;
+            z-index: 0;
+            opacity: 0.8;
+        }
+        .isometric-grid {
+            position: absolute;
+            width: 200vw;
+            height: 200vh;
+            left: -50vw;
+            top: -50vh;
+            background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(1000px) rotateX(60deg) rotateZ(45deg) translateY(-200px);
+            z-index: 0;
+            animation: gridMove 30s linear infinite;
+        }
+        @keyframes gridMove {
+            0% { transform: perspective(1000px) rotateX(60deg) rotateZ(45deg) translateY(0); }
+            100% { transform: perspective(1000px) rotateX(60deg) rotateZ(45deg) translateY(100px); }
+        }
+        @keyframes antigravPulse {
+            0% { transform: scale(1) rotate(0deg); }
+            100% { transform: scale(1.2) rotate(15deg); }
+        }
+        .glass-capsule {
+            position: relative;
+            z-index: 2;
+            background: rgba(20, 20, 25, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+            max-width: 650px;
+            transform-style: preserve-3d;
+        }
+        .btn-radiant {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            background: rgba(230, 0, 0, 0.1);
+            border-radius: 12px;
+            text-decoration: none;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 0 0 1px rgba(230,0,0,0.3);
+            cursor: pointer;
+        }
+        .btn-radiant::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: conic-gradient(from 0deg, transparent 70%, #ff1a1a 100%);
+            animation: neonSpin 2s linear infinite;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .btn-radiant::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            background: #110000;
+            border-radius: 10px;
+            z-index: -1;
+            transition: background 0.3s;
+        }
+        .btn-radiant:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(230,0,0,0.3);
+        }
+        .btn-radiant:hover::before { opacity: 1; }
+        .btn-radiant:hover::after { background: rgba(230,0,0,0.2); }
+        @keyframes neonSpin { 100% { transform: rotate(360deg); } }
+
+        /* Holograma 3D */
+        .hologram-wrapper {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+        }
+        .hologram-card {
+            width: 300px;
+            height: 380px;
+            background: linear-gradient(135deg, rgba(30,30,40,0.8), rgba(10,10,15,0.9));
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 20px;
+            position: relative;
+            transform: rotateY(-15deg) rotateX(5deg);
+            box-shadow: -20px 20px 50px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.1);
+            transform-style: preserve-3d;
+            animation: floatObj 6s ease-in-out infinite;
+            cursor: pointer;
+        }
+        .hologram-card:hover {
+            animation-play-state: paused;
+            transform: rotateY(0deg) rotateX(0deg) scale(1.05);
+            transition: transform 0.4s ease;
+        }
+        .hologram-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent, rgba(230,0,0,0.1));
+            border-radius: 20px;
+            pointer-events: none;
+        }
+        .hologram-scan-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: 2px;
+            background: var(--accent-red, #e60000);
+            box-shadow: 0 0 20px 5px rgba(230, 0, 0, 0.4);
+            animation: scanLine 2.5s ease-in-out infinite;
+            z-index: 5;
+            border-radius: 50%;
+        }
+        .hologram-content {
+            position: absolute;
+            inset: 20px;
+            border: 1px dashed rgba(255,255,255,0.15);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transform: translateZ(30px);
+        }
+        .face-mesh {
+            width: 120px;
+            height: 120px;
+            border: 2px solid rgba(230, 0, 0, 0.8);
+            border-radius: 50%;
+            position: relative;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: rgba(0,0,0,0.5);
+        }
+        .face-mesh::before {
+            content: '';
+            position: absolute;
+            inset: 10px;
+            border: 1px dashed rgba(230, 0, 0, 0.5);
+            border-radius: 50%;
+            animation: spinMesh 10s linear infinite;
+        }
+        .face-mesh::after {
+            content: '';
+            position: absolute;
+            inset: 20px;
+            border: 1px solid rgba(230, 0, 0, 0.3);
+            border-radius: 50%;
+            animation: spinMesh 5s linear infinite reverse;
+        }
+        @keyframes spinMesh { 100% { transform: rotate(360deg); } }
+        @keyframes scanLine {
+            0% { top: 10%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 90%; opacity: 0; }
+        }
+        @keyframes floatObj {
+            0%, 100% { transform: rotateY(-15deg) rotateX(5deg) translateY(0); }
+            50% { transform: rotateY(-12deg) rotateX(8deg) translateY(-20px); }
+        }
+        @media (max-width: 900px) {
+            .hero-antigravity { flex-direction: column; padding: 120px 20px 40px; }
+            .container-hero { grid-template-columns: 1fr !important; }
+            .glass-capsule { padding: 2rem; margin-bottom: 2rem; max-width: 100%; }
+        }
+    </style>
+
+    <!-- HERO ANTIGRAVITY -->
+    <section class="hero-antigravity">
+        <div class="isometric-grid"></div>
+        <div class="container container-hero" style="position: relative; z-index: 2; width: 100%; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center; max-width: 1200px; margin: 0 auto;">
+            
+            <div class="glass-capsule fade-in">
+                <div class="hero-eyebrow" style="display:inline-flex; align-items:center; border: 1px solid rgba(230,0,0,0.4); background: rgba(230,0,0,0.1); color: var(--accent-red, #ff1a1a); padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 1.5rem; text-transform: uppercase;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="margin-right:6px;">
+                        <circle cx="12" cy="12" r="10" />
+                    </svg> ATENÇÃO: SEU SITE ESTÁ IRREGULAR AGORA
+                </div>
+                
+                <h1 style="font-size: clamp(2.3rem, 5vw, 4rem); line-height: 1.1; margin-bottom: 2rem; color: #fff; text-align: left; text-shadow: 0 4px 20px rgba(0,0,0,0.5); font-weight: 800; letter-spacing: -0.02em;">
+                    Seu site pode levar uma<br>
+                    <span style="display: inline-block; background: linear-gradient(to right, #ff0f0f, #ff6b6b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.1em; transform: scale(1.02); padding: 5px 0;">multa de R$ 50 milhões</span><br>
+                    <span style="display: inline-flex; align-items: center; gap: 8px; margin-top: 15px; font-size: 0.35em; font-weight: 700; color: #00dd80; border: 1px solid rgba(0, 221, 128, 0.3); background: rgba(0, 221, 128, 0.1); padding: 8px 16px; border-radius: 100px; box-shadow: 0 0 15px rgba(0,221,128,0.2); letter-spacing: 0;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Resolva em 30 segundos
+                    </span>
+                </h1>
+                
+                <p style="font-size: 1.15rem; color: #b4b4cc; line-height: 1.6; margin-bottom: 2.5rem; text-align: left; max-width: 95%;">
+                    A <strong style="color: #fff;">Lei FELCA (15.211/2025)</strong> exige verificação de idade rigorosa em sites com conteúdo restrito. 
+                    O <strong style="color: #fff;">Decreto 12.880/2026</strong> regulamentou a necessidade com urgência. 
+                    <br><br>
+                    O Front18 atua como <strong style="color: var(--accent-red, #ff1a1a);">catraca inteligente zero-trust na borda.</strong>
+                </p>
+                
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-start;">
+                    <a href="#planos" class="btn-radiant">
+                        <span style="position: relative; z-index: 2; display: flex; align-items: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c-2.2-.6-3.8-2.6-4.5-5-.4-1.2-1.3-1.8-2.5-1.5a5.5 5.5 0 0 0 10 9c.7-2.2 0-4.6-2-6 1.4 3 0 6.5-2.5 8" />
+                            </svg>
+                            Blindar e Proteger Meu Site
+                        </span>
+                    </a>
+                    <a href="mailto:comercial@front18.com?subject=Consultoria%20de%20Proteção%20LGPD" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 1rem 2rem; border-radius: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                        Agendar Auditoria
+                    </a>
+                </div>
+                
+                <div class="hero-proof" style="margin-top: 2rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; color: #a0a0b0; justify-content: flex-start;">
+                    <span class="stars" style="display:inline-flex;gap:2px;color:var(--yellow, #F59E0B)">
+                        <?php for($i=0; $i<5; $i++): ?>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                        <?php endfor; ?>
+                    </span>
+                    <span>4.9/5 — 127 sites protegidos</span>
+                    <span>|</span>
+                    <span style="display:inline-flex;align-items:center;gap:6px;">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--primary-accent, #00dd80);box-shadow:0 0 8px var(--primary-accent, #00dd80);"></span>
+                        SLA 99.9%
+                    </span>
+                </div>
+            </div>
+
+            <div class="hologram-wrapper fade-in">
+                <div class="hologram-card" title="Simulação Engine Front18">
+                    <div class="hologram-scan-line"></div>
+                    <div class="hologram-content">
+                        <div class="face-mesh">
+                            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="rgba(230,0,0,0.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 20c.4-2.8 2.8-5 6-5h2c3.2 0 5.6 2.2 6 5"/><circle cx="12" cy="7" r="4"/><path d="M12 11v4"/><path d="M10 15h4"/>
+                            </svg>
+                        </div>
+                        <div style="font-family: monospace; color: var(--accent-red, #ff1a1a); font-size: 0.9rem; letter-spacing: 0.1em; text-transform: uppercase;">
+                            Liveness Shield
+                        </div>
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 8px;">
+                            Borda Protegida SLA Total
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </section>
 
-    <!-- DEADLINE STRIP -->
-    <div class="deadline-strip">
-        <div class="deadline-inner fade-in vis">
-            <div class="deadline-item">
-                <div class="num">R$ 50M</div>
-                <div class="lbl">Multa máxima por infração</div>
+    <!-- DEADLINE STRIP ANTIGRAVITY -->
+    <div class="deadline-strip" style="position: relative; background: rgba(5, 5, 8, 0.95); border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,10,10,0.15); padding: 5rem 0; overflow: hidden;">
+        <!-- Scanline visual effect -->
+        <div style="position: absolute; top: 0; left: -100%; width: 50%; height: 2px; background: linear-gradient(90deg, transparent, rgba(230,0,0,0.8), transparent); animation: scanLineAcross 4s ease-in-out infinite;"></div>
+        
+        <style>
+            @keyframes scanLineAcross { 0% { left: -50%; } 100% { left: 150%; } }
+            .deadline-antigrav-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 2rem;
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0 20px;
+                position: relative;
+                z-index: 2;
+            }
+            .deadline-card {
+                background: rgba(30, 30, 35, 0.4);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                border-radius: 20px;
+                padding: 3rem 1.5rem;
+                text-align: center;
+                transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s, border-color 0.4s;
+                position: relative;
+                overflow: hidden;
+            }
+            .deadline-card:hover {
+                transform: translateY(-8px);
+                box-shadow: 0 20px 40px rgba(230,0,0,0.15), inset 0 0 0 1px rgba(230,0,0,0.3);
+                border-color: transparent;
+            }
+            .deadline-card::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(circle at 50% 0%, rgba(230,0,0,0.15) 0%, transparent 60%);
+                opacity: 0;
+                transition: opacity 0.4s;
+            }
+            .deadline-card:hover::before {
+                opacity: 1;
+            }
+            .deadline-num {
+                font-size: 3.8rem;
+                font-weight: 900;
+                color: transparent;
+                -webkit-text-stroke: 1.5px rgba(230, 0, 0, 0.6);
+                line-height: 1;
+                margin-bottom: 1.2rem;
+                position: relative;
+                text-shadow: 0 0 20px rgba(230,0,0,0.1);
+                transition: all 0.4s ease;
+            }
+            /* Fill animation on hover */
+            .deadline-card:hover .deadline-num {
+                background: linear-gradient(135deg, #ff4c4c, #cc0000);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                -webkit-text-stroke: 0;
+                text-shadow: 0 5px 25px rgba(230,0,0,0.4);
+            }
+            .deadline-lbl {
+                font-size: 1.05rem;
+                color: #a0a0b0;
+                font-weight: 600;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                position: relative;
+                z-index: 2;
+                transition: color 0.3s;
+            }
+            .deadline-card:hover .deadline-lbl {
+                color: #fff;
+            }
+            @media (max-width: 768px) {
+                .deadline-antigrav-grid { grid-template-columns: 1fr; gap: 1rem; }
+            }
+        </style>
+
+        <div class="deadline-antigrav-grid fade-in vis">
+            <div class="deadline-card">
+                <div class="deadline-num">R$ 50M</div>
+                <div class="deadline-lbl">Multa máxima por infração</div>
             </div>
-            <div class="deadline-item">
-                <div class="num">24h</div>
-                <div class="lbl">Prazo para denúncias (Art.28)</div>
+            <div class="deadline-card">
+                <div class="deadline-num">24h</div>
+                <div class="deadline-lbl">Prazo para denúncias (Art.28)</div>
             </div>
-            <div class="deadline-item">
-                <div class="num">15 dias</div>
-                <div class="lbl">Prazo LGPD para titular (Art.18)</div>
+            <div class="deadline-card">
+                <div class="deadline-num">15 dias</div>
+                <div class="deadline-lbl">Prazo LGPD para titular (Art.18)</div>
             </div>
         </div>
     </div>
@@ -208,45 +519,231 @@ catch (Exception $e) {
         </div>
     </section>
 
-    <!-- SOLUÇÃO -->
-    <section class="section sec-dark" id="solucao">
-        <div class="container">
-            <div class="sol-grid fade-in vis">
+    <!-- SOLUÇÃO ANTIGRAVITY -->
+    <section class="section sec-dark" id="solucao" style="position:relative; overflow:hidden;">
+        <!-- Fundo de poeira cósmica / flares subtis -->
+        <div style="position:absolute; inset:0; background: radial-gradient(circle at 80% 50%, rgba(0,221,128,0.05) 0%, transparent 60%); z-index:0;"></div>
+        
+        <style>
+            .sol-antigrav-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 4rem;
+                align-items: center;
+                position: relative;
+                z-index: 2;
+            }
+            .sol-features li {
+                list-style: none;
+                margin-bottom: 1.5rem;
+                display: flex;
+                align-items: flex-start;
+                gap: 1rem;
+                font-size: 1.1rem;
+                color: #b4b4b4;
+            }
+            .sol-features .feat-icon {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+                background: rgba(0, 221, 128, 0.1);
+                border: 1px solid rgba(0, 221, 128, 0.4);
+                border-radius: 50%;
+                color: #00dd80;
+                flex-shrink: 0;
+                box-shadow: 0 0 10px rgba(0,221,128,0.2);
+            }
+            /* O Radar Simulator */
+            .radar-glass-panel {
+                background: rgba(15, 15, 20, 0.5);
+                backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 24px;
+                padding: 3rem;
+                position: relative;
+                box-shadow: 0 30px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                min-height: 400px;
+                transition: transform 0.5s ease;
+            }
+            .radar-glass-panel:hover {
+                transform: rotateY(0deg) rotateX(0deg) scale(1.02) !important;
+                border-color: rgba(0, 221, 128, 0.3);
+            }
+            .radar-circle {
+                width: 160px;
+                height: 160px;
+                border-radius: 50%;
+                border: 2px solid rgba(0, 221, 128, 0.2);
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 2rem;
+            }
+            .radar-circle::after {
+                content: '';
+                position: absolute;
+                inset: -20px;
+                border: 1px dashed rgba(0, 221, 128, 0.4);
+                border-radius: 50%;
+                animation: spinSlow 15s linear infinite;
+            }
+            .radar-scan-arm {
+                position: absolute;
+                top: 50%; left: 50%;
+                width: 50%; height: 2px;
+                background: linear-gradient(90deg, transparent, #00dd80);
+                transform-origin: 0 50%;
+                animation: scanRadar 3s linear infinite;
+                z-index: 10;
+            }
+            .radar-scan-arm::after {
+                content: '';
+                position: absolute;
+                right: 0; top: -20px;
+                width: 40px; height: 40px;
+                background: radial-gradient(circle at 100% 50%, rgba(0,221,128,0.8), transparent);
+                opacity: 0.5;
+            }
+            @keyframes scanRadar { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            @keyframes spinSlow { 100% { transform: rotate(360deg); } }
+            
+            .auth-status {
+                background: rgba(0, 221, 128, 0.1);
+                border: 1px solid rgba(0, 221, 128, 0.3);
+                color: #00dd80;
+                padding: 10px 24px;
+                border-radius: 100px;
+                font-weight: 700;
+                letter-spacing: 2px;
+                font-size: 0.9rem;
+                animation: pulseAuth 2s infinite;
+            }
+            @keyframes pulseAuth {
+                0%, 100% { box-shadow: 0 0 10px rgba(0,221,128,0); }
+                50% { box-shadow: 0 0 20px rgba(0,221,128,0.4); }
+            }
+            
+            /* Add specificity to override original red button if needed, but we inline it below */
+            .btn-neon-green {
+                position: relative;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem 2rem;
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: #00dd80;
+                background: rgba(0, 221, 128, 0.1);
+                border-radius: 12px;
+                text-decoration: none;
+                overflow: hidden;
+                transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                box-shadow: 0 0 0 1px rgba(0,221,128,0.3);
+                cursor: pointer;
+            }
+            .btn-neon-green::before {
+                content: '';
+                position: absolute;
+                inset: -2px;
+                background: conic-gradient(from 0deg, transparent 70%, #00dd80 100%);
+                animation: neonSpin 2s linear infinite;
+                z-index: -1;
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+            .btn-neon-green::after {
+                content: '';
+                position: absolute;
+                inset: 2px;
+                background: #05110c;
+                border-radius: 10px;
+                z-index: -1;
+                transition: background 0.3s;
+            }
+            .btn-neon-green:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(0,221,128,0.3);
+            }
+            .btn-neon-green:hover::before { opacity: 1; }
+            .btn-neon-green:hover::after { background: rgba(0,221,128,0.15); }
+            
+            @media (max-width: 900px) {
+                .sol-antigrav-grid { grid-template-columns: 1fr; gap: 2rem; }
+            }
+        </style>
+
+        <div class="container" style="padding-top:4rem; padding-bottom:4rem;">
+            <div class="sol-antigrav-grid fade-in vis">
                 <div>
-                    <div class="sec-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                    <div class="hero-eyebrow" style="display:inline-flex; align-items:center; border: 1px solid rgba(0,221,128,0.3); background: rgba(0,221,128,0.1); color: #00dd80; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 1.5rem; text-transform: uppercase;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                             <polyline points="22 4 12 14.01 9 11.01" />
-                        </svg> A SOLUÇÃO</div>
-                    <h2 class="sec-title">Biometria facial que protege seu negócio.</h2>
-                    <p class="sec-sub" style="margin-bottom:24px">O Front18 é a catraca inteligente que bloqueia os
-                        menores sem expor dados e sem perder clientes reais.</p>
-                    <ul class="sol-list">
-                        <li><span class="check">✓</span> <strong>Verificação facial neural</strong> — IA roda no
-                            navegador</li>
-                        <li><span class="check">✓</span> <strong>Conformidade tripla</strong> — Lei FELCA + Decreto +
-                            LGPD</li>
-                        <li><span class="check">✓</span> <strong>Dossiê forense</strong> — prova de diligência pronta
+                        </svg> A SOLUÇÃO
+                    </div>
+                    <h2 style="font-size: clamp(2rem, 3.5vw, 3rem); line-height: 1.1; margin-bottom: 1.5rem; color: #fff; font-weight: 800; letter-spacing: -0.02em;">Biometria facial que protege seu negócio.</h2>
+                    <p style="font-size: 1.15rem; color: #a0a0b0; line-height: 1.6; margin-bottom: 2.5rem;">O Front18 é a <strong>catraca inteligente zero-trust</strong> que bloqueia os infratores sem expor dados e sem barrar os clientes reais.</p>
+                    
+                    <ul class="sol-features" style="padding:0;">
+                        <li>
+                            <div class="feat-icon">✓</div>
+                            <div><strong style="color: #fff;">Verificação facial neural</strong> — IA roda 100% silenciosa no navegador do usuário.</div>
+                        </li>
+                        <li>
+                            <div class="feat-icon">✓</div>
+                            <div><strong style="color: #fff;">Conformidade tripla máxima</strong> — Cobre as exigências da Lei FELCA, do Decreto e da LGPD.</div>
+                        </li>
+                        <li>
+                            <div class="feat-icon">✓</div>
+                            <div><strong style="color: #fff;">Dossiê forense</strong> — Cria prova de diligência pronta e auditável para eventuais denúncias.</div>
                         </li>
                     </ul>
-                    <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap">
-                        <a href="#planos" class="cta-btn cta-buy"><svg width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2">
-                                <path
-                                    d="M8.5 14.5A2.5 2.5 0 0 0 11 12c-2.2-.6-3.8-2.6-4.5-5-.4-1.2-1.3-1.8-2.5-1.5a5.5 5.5 0 0 0 10 9c.7-2.2 0-4.6-2-6 1.4 3 0 6.5-2.5 8" />
-                            </svg> Quero Proteger Meu Site</a>
+                    
+                    <div style="margin-top:2.5rem; display:flex; gap:12px; flex-wrap:wrap">
+                        <a href="#planos" class="btn-neon-green">
+                            <span style="position: relative; z-index: 2; display: flex; align-items: center; gap: 8px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                Quero Proteger Meu Site
+                            </span>
+                        </a>
                     </div>
                 </div>
-                <div class="sol-visual">
-                    <div class="sol-face">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)"
-                            stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                            <circle cx="12" cy="7" r="4" />
-                        </svg>
+                
+                <div class="sol-visual-container" style="perspective:1000px;">
+                    <div class="radar-glass-panel" style="transform: rotateY(-10deg) rotateX(5deg);">
+                        
+                        <div class="radar-circle">
+                            <div class="radar-scan-arm"></div>
+                            
+                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#00dd80" stroke-width="1.5">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                        </div>
+                        
+                        <div class="auth-status">✓ ACESSO LIBERADO</div>
+                        <div style="color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-top: 1.2rem; font-family: monospace;">
+                            Biometria facial verificada • Idade: 18+
+                        </div>
+                        
+                        <!-- Mini console flying texts -->
+                        <div style="position: absolute; bottom: 20px; left: 20px; opacity: 0.3; font-family: monospace; font-size: 0.65rem; color: #00dd80;">
+                            > front18.liveness_check()...<br>
+                            > mesh_capture: OK [0.12ms]<br>
+                            > neural_vectors: MATCH (99.8%)
+                        </div>
                     </div>
-                    <div class="sol-status">✓ ACESSO LIBERADO</div>
-                    <div class="sol-status-sub">Biometria facial verificada • Idade: 18+</div>
                 </div>
             </div>
         </div>

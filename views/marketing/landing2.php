@@ -502,8 +502,8 @@ catch (Exception $e) {
             }
             .deadline-lbl {
                 font-size: 1.05rem;
-                color: #a0a0b0;
-                font-weight: 600;
+                color: #4a4a5a;
+                font-weight: 700;
                 letter-spacing: 0.05em;
                 text-transform: uppercase;
                 position: relative;
@@ -511,7 +511,7 @@ catch (Exception $e) {
                 transition: color 0.3s;
             }
             .deadline-card:hover .deadline-lbl {
-                color: #fff;
+                color: #190C3A;
             }
             @media (max-width: 900px) {
                 .deadline-antigrav-grid { grid-template-columns: 1fr; gap: 1.5rem; }
@@ -962,11 +962,22 @@ catch (Exception $e) {
                         <div id="simResult" style="color: #4a4a5a; font-size: 0.85rem; font-weight: 700; margin-top: 1.2rem; font-family: monospace;">
                             Abra a câmera e veja em ação
                         </div>
-                        
-                        <!-- Mini console flying texts -->
-                        <div id="simLogs" style="position: absolute; bottom: 20px; left: 20px; opacity: 0.8; font-family: monospace; font-size: 0.75rem; color: #EA5944; font-weight: 600; pointer-events: none;">
-                            > aguardando inicialização...<br>
-                            > ...
+
+                        <!-- Mini console flying texts que acompanham a caixa em fluxo (agora acima pra não esmagar a imagem) -->
+                        <div id="simLogs" style="width:100%; text-align: left; margin-top: 10px; margin-bottom: 5px; opacity: 0; font-family: monospace; font-size: 0.75rem; color: #EA5944; font-weight: 600; padding: 10px 15px; background: rgba(234, 89, 68, 0.05); border-radius: 8px; border: 1px dashed rgba(234, 89, 68, 0.2); transition: opacity 0.3s; display:none; position:relative; z-index:30;">
+                            > aguardando inicialização...
+                        </div>
+
+                        <!-- Lógica do Blur Visual de Demonstração -->
+                        <div id="simulatedContentBlock" style="margin-top:10px; width:100%; height:140px; border-radius:12px; overflow:hidden; position:relative; border:1px solid rgba(25, 12, 58, 0.1);">
+                            <!-- Usando o card 3 que tem de fundo as interfaces de dados lindas, local e sem cache externo -->
+                            <div id="simLockedImg" style="width:100%; height:100%; background: url('/public/img/image/card3.png') center/cover; filter:blur(15px); transform: scale(1.1); transition: filter 1s ease, transform 1s ease;"></div>
+                            
+                            <!-- Máscara de cadeado -->
+                            <div id="simLockOverlay" style="position:absolute; inset:0; background:rgba(25, 12, 58, 0.75); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-family:monospace; font-weight:700; font-size: 0.9rem; transition: opacity 0.5s;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FD8972" stroke-width="2" style="margin-bottom:8px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                CONTEÚDO BLOQUEADO
+                            </div>
                         </div>
 
                         <!-- LOCAL SIMULATOR SCRIPT -->
@@ -989,6 +1000,9 @@ catch (Exception $e) {
                             mesh.style.display = 'block';
                             arm.style.display = 'block';
                             
+                            logs.style.display = 'block';
+                            setTimeout(() => { logs.style.opacity = '1'; }, 100);
+                            
                             logs.innerHTML = "> solicitando permissão da câmera...<br>> conectando hw...";
                             resultText.innerHTML = "Iniciando Sensor Neural...";
                             resultText.style.color = "#EA5944";
@@ -1009,7 +1023,25 @@ catch (Exception $e) {
                                     video.style.opacity = '0.3';
                                     video.style.filter = 'grayscale(100%)';
                                     
-                                    resultText.innerHTML = "Biometria facial verificada • Idade estimada: 18+";
+                                    // A Mágica de "destravar" o blur
+                                    var simLockedImg = document.getElementById('simLockedImg');
+                                    var simLockOverlay = document.getElementById('simLockOverlay');
+                                    if(simLockedImg) {
+                                        simLockedImg.style.filter = "blur(0)";
+                                        simLockedImg.style.transform = "scale(1)";
+                                    }
+                                    if(simLockOverlay) { 
+                                        simLockOverlay.style.opacity = "0";
+                                        setTimeout(() => simLockOverlay.style.display = "none", 500); 
+                                    }
+                                    
+                                    // Some o log feio
+                                    logs.style.opacity = '0';
+                                    setTimeout(() => logs.style.display = 'none', 300);
+
+                                    // Calcula idade simulada adulta (>18) randômica entre 23 e 45!
+                                    var fakeAge = Math.floor(Math.random() * (45 - 23 + 1)) + 23;
+                                    resultText.innerHTML = "Biometria validada • Idade estimada: <strong style='color:#EA5944'>" + fakeAge + " anos</strong>";
                                     resultText.style.color = "#4a4a5a";
                                     
                                     // Se já não tiver adicionado a box de check verde, adicione:
@@ -1017,7 +1049,7 @@ catch (Exception $e) {
                                         var okBadge = document.createElement("div");
                                         okBadge.id = "simSuccessBadge";
                                         okBadge.className = "auth-status";
-                                        okBadge.innerText = "✓ ACESSO LIBERADO";
+                                        okBadge.innerHTML = "<strong style='color:#00DD80;'>✓ ACESSO LIBERADO</strong>";
                                         okBadge.style.background = "rgba(0, 221, 128, 0.1)";
                                         okBadge.style.borderColor = "rgba(0, 221, 128, 0.4)";
                                         okBadge.style.color = "#00DD80";

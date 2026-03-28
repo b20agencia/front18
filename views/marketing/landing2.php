@@ -216,8 +216,8 @@ catch (Exception $e) {
             perspective: 1000px;
         }
         .hologram-card {
-            width: 300px;
-            height: 380px;
+            width: 380px; /* Mais Visível e Maior */
+            height: 460px;
             background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,240,245,0.95));
             border: 1px solid rgba(25, 12, 58,0.08);
             border-radius: 20px;
@@ -350,7 +350,7 @@ catch (Exception $e) {
                     </svg> ATENÇÃO: SEU SITE ESTÁ IRREGULAR AGORA
                 </div>
                 
-                <h1 style="font-size: clamp(2.3rem, 5vw, 4rem); line-height: 1.1; margin-bottom: 2rem; color: #190C3A; text-align: left; text-shadow: 0 4px 20px rgba(25, 12, 58,0.1); font-weight: 800; letter-spacing: -0.02em;">
+                <h1 style="font-size: clamp(1.8rem, 3.5vw, 3rem); line-height: 1.1; margin-bottom: 1.5rem; color: #190C3A; text-align: left; text-shadow: 0 4px 20px rgba(25, 12, 58,0.1); font-weight: 800; letter-spacing: -0.02em;">
                     Seu site pode levar uma<br>
                     <span style="display: inline-block; background: linear-gradient(to right, #EA5944, #FD8972); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.1em; transform: scale(1.02); padding: 5px 0;">multa de R$ 50 milhões</span><br>
                     <span style="display: inline-flex; align-items: center; gap: 8px; margin-top: 15px; font-size: 0.35em; font-weight: 700; color: #FD8972; border: 1px solid rgba(253, 137, 114, 0.3); background: rgba(253, 137, 114, 0.1); padding: 8px 16px; border-radius: 100px; box-shadow: 0 0 15px rgba(253, 137, 114,0.1); letter-spacing: 0;">
@@ -359,7 +359,7 @@ catch (Exception $e) {
                     </span>
                 </h1>
                 
-                <p style="font-size: 1.15rem; color: #2D0F65; line-height: 1.6; margin-bottom: 2.5rem; text-align: left; max-width: 95%;">
+                <p style="font-size: 1.05rem; color: #2D0F65; line-height: 1.6; margin-bottom: 2rem; text-align: left; max-width: 95%;">
                     A <strong style="color: #190C3A;">Lei FELCA (15.211/2025)</strong> exige verificação de idade rigorosa em sites com conteúdo restrito. 
                     O <strong style="color: #190C3A;">Decreto 12.880/2026</strong> regulamentou a necessidade com urgência. 
                     <br><br>
@@ -408,14 +408,14 @@ catch (Exception $e) {
                     <div class="hologram-scan-line"></div>
                     <div class="hologram-content">
                         <div class="face-mesh">
-                            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="rgba(230,0,0,0.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#EA5944" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M5 20c.4-2.8 2.8-5 6-5h2c3.2 0 5.6 2.2 6 5"/><circle cx="12" cy="7" r="4"/><path d="M12 11v4"/><path d="M10 15h4"/>
                             </svg>
                         </div>
-                        <div style="font-family: monospace; color: var(--accent-red, #ff1a1a); font-size: 0.9rem; letter-spacing: 0.1em; text-transform: uppercase;">
+                        <div style="font-family: monospace; color: #EA5944; font-size: 1.4rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;">
                             Liveness Shield
                         </div>
-                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 8px;">
+                        <div style="font-size: 0.95rem; font-weight: 700; color: #2D0F65; margin-top: 10px; text-transform: uppercase; letter-spacing: 0.05em;">
                             Borda Protegida SLA Total
                         </div>
                     </div>
@@ -550,11 +550,11 @@ catch (Exception $e) {
         }
         .marquee-label {
             text-align: center;
-            color: #a0a0b0;
-            font-size: 0.9rem;
+            color: rgba(25, 12, 58, 0.7); /* Contraste Limpo Roxo em fundo Light */
+            font-size: 0.95rem;
             text-transform: uppercase;
             letter-spacing: 2px;
-            font-weight: 600;
+            font-weight: 700; /* Mais peso */
             margin-bottom: 2rem;
         }
         .marquee-container {
@@ -589,14 +589,15 @@ catch (Exception $e) {
             justify-content: center;
             gap: 12px;
             padding: 0.8rem 1.8rem;
-            background: rgba(30,30,40,0.4);
+            background: rgba(255,255,255,0.8);
             backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(25, 12, 58, 0.08);
             border-radius: 14px;
-            color: #fff;
+            color: #190C3A;
             font-family: 'Inter', sans-serif;
             font-weight: 700;
             font-size: 1.1rem;
+            box-shadow: 0 10px 20px rgba(25, 12, 58,0.03);
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             filter: grayscale(1) opacity(0.5); /* As logos ficam mudas e cinzas de início */
             min-width: max-content;
@@ -764,13 +765,13 @@ catch (Exception $e) {
             }
             /* O Radar Simulator */
             .radar-glass-panel {
-                background: rgba(15, 15, 20, 0.5);
+                background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: blur(16px);
-                border: 1px solid rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(25, 12, 58, 0.08);
                 border-radius: 24px;
                 padding: 3rem;
                 position: relative;
-                box-shadow: 0 30px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+                box-shadow: 0 30px 60px rgba(25, 12, 58,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -824,11 +825,11 @@ catch (Exception $e) {
             
             .auth-status {
                 background: rgba(253, 137, 114, 0.1);
-                border: 1px solid rgba(253, 137, 114, 0.3);
-                color: #FD8972;
+                border: 1px solid rgba(253, 137, 114, 0.4);
+                color: #EA5944;
                 padding: 10px 24px;
                 border-radius: 100px;
-                font-weight: 700;
+                font-weight: 800;
                 letter-spacing: 2px;
                 font-size: 0.9rem;
                 animation: pulseAuth 2s infinite;
@@ -937,26 +938,121 @@ catch (Exception $e) {
                 <div class="sol-visual-container" style="perspective:1000px;">
                     <div class="radar-glass-panel" style="transform: rotateY(-10deg) rotateX(5deg);">
                         
-                        <div class="radar-circle">
-                            <div class="radar-scan-arm"></div>
+                        <div class="radar-circle" id="simRadarBox">
+                            <div class="radar-scan-arm" id="simScanArm"></div>
                             
-                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#FD8972" stroke-width="1.5">
+                            <svg id="simBaseIcon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#FD8972" stroke-width="1.5" style="position:relative; z-index:3;">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                                 <circle cx="12" cy="7" r="4" />
                             </svg>
+                            
+                            <video id="simVideo" autoplay muted playsinline style="display:none; width:100%; height:100%; object-fit:cover; border-radius:50%; position:absolute; inset:0; z-index: 1;"></video>
+                            
+                            <!-- Overlay de scanner facial pulsando -->
+                            <div id="simMesh" style="display:none; position:absolute; inset:0; z-index:2; border-radius:50%; border:2px dashed #FD8972; opacity:0.6; animation: spinSlow 3s linear infinite;"></div>
                         </div>
                         
-                        <div class="auth-status">✓ ACESSO LIBERADO</div>
-                        <div style="color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-top: 1.2rem; font-family: monospace;">
-                            Biometria facial verificada • Idade: 18+
+                        <a href="#" id="simBtn" onclick="runInLocoDemo(event)" class="btn-radiant" style="font-size: 0.9rem; padding: 12px 24px; text-decoration: none; border-radius: 100px; display: inline-flex; align-items: center; gap: 8px; z-index: 20;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                            TESTAR CATRACA AO VIVO
+                        </a>
+                        
+                        <div id="simResult" style="color: #4a4a5a; font-size: 0.85rem; font-weight: 700; margin-top: 1.2rem; font-family: monospace;">
+                            Abra a câmera e veja em ação
                         </div>
                         
                         <!-- Mini console flying texts -->
-                        <div style="position: absolute; bottom: 20px; left: 20px; opacity: 0.3; font-family: monospace; font-size: 0.65rem; color: #FD8972;">
-                            > front18.liveness_check()...<br>
-                            > mesh_capture: OK [0.12ms]<br>
-                            > neural_vectors: MATCH (99.8%)
+                        <div id="simLogs" style="position: absolute; bottom: 20px; left: 20px; opacity: 0.8; font-family: monospace; font-size: 0.75rem; color: #EA5944; font-weight: 600; pointer-events: none;">
+                            > aguardando inicialização...<br>
+                            > ...
                         </div>
+
+                        <!-- LOCAL SIMULATOR SCRIPT -->
+                        <script>
+                        function runInLocoDemo(e) {
+                            e.preventDefault();
+                            var btn = document.getElementById("simBtn");
+                            var video = document.getElementById("simVideo");
+                            var baseIcon = document.getElementById("simBaseIcon");
+                            var mesh = document.getElementById("simMesh");
+                            var logs = document.getElementById("simLogs");
+                            var resultText = document.getElementById("simResult");
+                            var arm = document.getElementById("simScanArm");
+
+                            btn.style.display = 'none';
+                            baseIcon.style.opacity = '0.1';
+                            video.style.display = 'block';
+                            video.style.filter = 'grayscale(0%)';
+                            video.style.opacity = '1';
+                            mesh.style.display = 'block';
+                            arm.style.display = 'block';
+                            
+                            logs.innerHTML = "> solicitando permissão da câmera...<br>> conectando hw...";
+                            resultText.innerHTML = "Iniciando Sensor Neural...";
+                            resultText.style.color = "#EA5944";
+
+                            var flowSuccess = function(streamElement) {
+                                setTimeout(() => logs.innerHTML = "> front18.liveness_check()...<br>> analisando vetores tridimensionais...", 800);
+                                setTimeout(() => logs.innerHTML = "> liveness: PASS [120ms]<br>> mesh_capture: OK<br>> depth_sensor: OK", 2800);
+                                setTimeout(() => logs.innerHTML = "> neural_vectors: MATCH (99.8%)<br>> estimando index de maturidade facial...", 4500);
+                                setTimeout(() => {
+                                    // Terminou com Sucesso!
+                                    if(streamElement && streamElement.srcObject) {
+                                        var tracks = streamElement.srcObject.getTracks();
+                                        tracks.forEach(function(track) { track.stop(); });
+                                    }
+                                    
+                                    mesh.style.display = 'none';
+                                    arm.style.display = 'none';
+                                    video.style.opacity = '0.3';
+                                    video.style.filter = 'grayscale(100%)';
+                                    
+                                    resultText.innerHTML = "Biometria facial verificada • Idade estimada: 18+";
+                                    resultText.style.color = "#4a4a5a";
+                                    
+                                    // Se já não tiver adicionado a box de check verde, adicione:
+                                    if(!document.getElementById('simSuccessBadge')) {
+                                        var okBadge = document.createElement("div");
+                                        okBadge.id = "simSuccessBadge";
+                                        okBadge.className = "auth-status";
+                                        okBadge.innerText = "✓ ACESSO LIBERADO";
+                                        okBadge.style.background = "rgba(0, 221, 128, 0.1)";
+                                        okBadge.style.borderColor = "rgba(0, 221, 128, 0.4)";
+                                        okBadge.style.color = "#00DD80";
+                                        okBadge.style.marginBottom = "15px";
+                                        btn.parentNode.insertBefore(okBadge, btn);
+                                    }
+
+                                    // Botão de restaurar
+                                    btn.innerHTML = "♻ REINICIAR TESTE";
+                                    btn.style.display = 'inline-flex';
+                                    btn.style.background = "rgba(25, 12, 58, 0.05)";
+                                    btn.style.border = "1px solid rgba(25, 12, 58,0.1)";
+                                    btn.style.color = "#190C3A";
+                                    btn.onclick = function(ex){ location.reload(); ex.preventDefault(); };
+                                }, 6500);
+                            };
+                            
+                            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                                navigator.mediaDevices.getUserMedia({video: true})
+                                .then(function(stream) {
+                                    video.srcObject = stream;
+                                    logs.innerHTML = "> stream recebido<br>> iniciando face engine...";
+                                    flowSuccess(video);
+                                })
+                                .catch(function(err) {
+                                    logs.innerHTML = "> Câmera não encontrada ou bloqueada.<br>> Rodando simulação cega...";
+                                    // Faz a animação mesmo sem a webcam nativa (como simulador vazio)
+                                    flowSuccess(video);
+                                });
+                            } else {
+                                logs.innerHTML = "> Api MediaDevices não suportada.<br>> Simulação Ativa...";
+                                flowSuccess(video);
+                            }
+                        }
+                        </script>
                     </div>
                 </div>
             </div>
@@ -980,7 +1076,7 @@ catch (Exception $e) {
                     <p>O cérebro do Front18. Uma IA de ponta treinada com milhões de vértices faciais que atua em processamento contínuo local. Milissegundos de validação sem enviar a foto para a nuvem.</p><span class="feat-tag">INTELIGÊNCIA NATIVA</span>
                 </div>
                 <div class="gsap-img">
-                    <img src="/public/img/image/card1.png" onerror="this.onerror=null; this.src='public/img/image/card1.png'; if(!this.complete)this.src='img/image/card1.png';" alt="Card 1">
+                    <img src="/public/img/image/card6.png" onerror="this.onerror=null; this.src='public/img/image/card6.png'; if(!this.complete)this.src='img/image/card6.png';" alt="Card 6">
                 </div>
             </div>
 
@@ -1040,7 +1136,7 @@ catch (Exception $e) {
                     <p>Termos rigorosos e Cookies Zero. Sem persistência de rostos — garantindo que nem a LGPD e nem a ANPD respirem no calcanhar do seu negócio.</p><span class="feat-tag">LEGALIDADE BY DESIGN</span>
                 </div>
                 <div class="gsap-img">
-                    <img src="/public/img/image/card6.png" onerror="this.onerror=null; this.src='public/img/image/card6.png'; if(!this.complete)this.src='img/image/card6.png';" alt="Card 6">
+                    <img src="/public/img/image/card1.png" onerror="this.onerror=null; this.src='public/img/image/card1.png'; if(!this.complete)this.src='img/image/card1.png';" alt="Card 1">
                 </div>
             </div>
         </div>

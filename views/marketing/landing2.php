@@ -282,9 +282,26 @@ catch (Exception $e) {
             50% { transform: rotateY(-12deg) rotateX(8deg) translateY(-20px); }
         }
         @media (max-width: 900px) {
-            .hero-antigravity { flex-direction: column; padding: 120px 20px 40px; }
-            .container-hero { grid-template-columns: 1fr !important; }
-            .glass-capsule { padding: 2rem; margin-bottom: 2rem; max-width: 100%; }
+            .hero-antigravity { padding: 100px 15px 40px; flex-direction: column; min-height: auto; }
+            .container-hero { grid-template-columns: 1fr !important; gap: 30px !important; }
+            .glass-capsule { padding: 1.5rem; margin-bottom: 0; max-width: 100%; border-radius: 16px; }
+            .glass-capsule h1 { font-size: clamp(2rem, 8vw, 2.5rem) !important; text-align: center !important; }
+            .glass-capsule p { font-size: 1rem !important; text-align: center !important; margin-bottom: 2rem !important; }
+            
+            /* Center header elements */
+            .glass-capsule .hero-eyebrow { margin: 0 auto 1.5rem auto !important; display: inline-flex !important; }
+            .glass-capsule > div:first-child { width: 100%; text-align: center; }
+            
+            /* Center CTAs & stacking */
+            .glass-capsule div[style*="display: flex; gap: 1rem"] { flex-direction: column; width: 100%; align-items: stretch !important; justify-content: center !important; text-align: center; }
+            .glass-capsule .btn-radiant, .glass-capsule .btn { width: 100%; display: flex; justify-content: center; }
+            .hero-proof { width: 100%; justify-content: center !important; text-align: center; flex-direction: column; gap: 8px !important; }
+            
+            /* Ajuste Holograma Mobile */
+            .hologram-wrapper { height: auto; min-height: 350px; padding: 0; margin-top: 20px; perspective: none; }
+            .hologram-card { width: 100%; max-width: 300px; height: 320px; margin: 0 auto; transform: none !important; animation: none; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+            /* Pílula Resolva em 30 Segs */
+            .glass-capsule h1 span[style*="border-radius: 100px"] { font-size: 0.5em !important; padding: 6px 12px !important; margin: 15px auto 0 auto !important; display: flex !important; width: fit-content; }
         }
     </style>
 
@@ -451,8 +468,13 @@ catch (Exception $e) {
             .deadline-card:hover .deadline-lbl {
                 color: #fff;
             }
+            @media (max-width: 900px) {
+                .deadline-antigrav-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            }
             @media (max-width: 768px) {
-                .deadline-antigrav-grid { grid-template-columns: 1fr; gap: 1rem; }
+                .deadline-strip { padding: 3rem 0 !important; }
+                .deadline-card { padding: 2rem 1.5rem; }
+                .deadline-num { font-size: clamp(2.5rem, 12vw, 3.5rem) !important; }
             }
         </style>
 
@@ -676,7 +698,14 @@ catch (Exception $e) {
             .btn-neon-green:hover::after { background: rgba(0,221,128,0.15); }
             
             @media (max-width: 900px) {
-                .sol-antigrav-grid { grid-template-columns: 1fr; gap: 2rem; }
+                .sol-antigrav-grid { grid-template-columns: 1fr; gap: 3rem; text-align: center; }
+                .sol-features li { flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; }
+                .sol-antigrav-grid .hero-eyebrow { margin-left: auto !important; margin-right: auto !important; display: inline-flex !important; }
+                .sol-antigrav-grid h2 { text-align: center !important; font-size: clamp(2rem, 7vw, 2.5rem) !important; }
+                .sol-antigrav-grid p { text-align: center !important; }
+                .sol-antigrav-grid div[style*="display:flex; gap:12px"] { justify-content: center !important; width: 100%; }
+                .radar-glass-panel { min-height: auto; padding: 2.5rem 1rem; transform: none !important; margin: 0 auto; max-width: 100%; }
+                .radar-glass-panel:hover { transform: none !important; }
             }
         </style>
 

@@ -17,6 +17,16 @@ require_once __DIR__ . '/../../src/Core/Database.php';
 Database::setup();
 $pdo = Database::getConnection();
 
+// --- AUTO-MIGRAÇÃO DA TABELA MARQUEE SE NÃO EXISTIR ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS saas_marquee_clients (
+    id int(11) NOT NULL AUTO_INCREMENT,
+    name varchar(150) NOT NULL,
+    logo_path varchar(255) DEFAULT NULL,
+    is_active tinyint(1) DEFAULT 1,
+    created_at timestamp NOT NULL DEFAULT current_timestamp(),
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 // ==========================================
 // ROUTES & ACTIONS (POST HANDLERS)
 // ==========================================
@@ -91,6 +101,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_plan = (int)$_POST['plan_id'];
         $pdo->prepare("UPDATE saas_users SET plan_id = ? WHERE id = ?")->execute([$new_plan, $cli_id]);
         $message = "Plano comercial do Cliente #$cli_id atualizado em Tempo Real. Limites alterados.";
+    }
+    // ------ AÇÕES DA MARQUEE DE LOGOS (SOCIAL PROOF) ------
+    elseif ($action === 'add_marquee') {
+        $name = trim($_POST['name'] ?? '');
+        $logo_path = null;
+        
+        // Verifica se subiu alguma imagem
+        if (!empty($_FILES['logo']['name'])) {
+            $ext = strtolower(pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION));
+            $newname = 'mq_' . time() . '_' . rand(100, 999) . '.' . $ext;
+            $dirLogo = __DIR__ . '/../../public/img/logos/';
+            if (!is_dir($dirLogo)) @mkdir($dirLogo, 0777, true);
+            if (move_uploaded_file($_FILES['logo']['tmp_name'], $dirLogo . $newname)) {
+                $logo_path = 'public/img/logos/' . $newname;
+            }
+        }
+        
+        // Se a pessoa só queria a Logo e não preencheu o Nome, a gente não vai imprimir texto de placeholder 
+        // e mascara isso para que o banco aceite silenciosamente a ausência de texto visual.
+        if (empty($name) && $logo_path) {
+            $name = ' '; // Espaço invisível para cumprir o schema de strings (NOT NULL)
+        }
+        
+        // Só tenta adicionar se tiver no minimo o texto visível ou a imagem
+        if (trim($name) !== '' || $logo_path) {
+            $pdo->prepare("INSERT INTO saas_marquee_clients (name, logo_path) VALUES (?, ?)")->execute([$name, $logo_path]);
+            $message = "Marquee B2B Atualizado e Disparado pra Home.";
+        } else {
+            $message = "ERRO: Forneça pelo menos um Nome ou suba uma Imagem de Logo.";
+        }
+    }
+    elseif ($action === 'toggle_marquee') {
+        $id = (int)$_POST['marquee_id'];
+        $pdo->prepare("UPDATE saas_marquee_clients SET is_active = NOT is_active WHERE id = ?")->execute([$id]);
+        $message = "Status de exibição atualizado no site principal.";
+    }
+    elseif ($action === 'delete_marquee') {
+        $id = (int)$_POST['marquee_id'];
+        $stmt = $pdo->prepare("SELECT logo_path FROM saas_marquee_clients WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && $row['logo_path']) {
+            @unlink(__DIR__ . '/../../' . $row['logo_path']);
+        }
+        $pdo->prepare("DELETE FROM saas_marquee_clients WHERE id = ?")->execute([$id]);
+        $message = "Logo do cliente removida da plataforma e do disco de armazenamento.";
     }
 }
 
@@ -183,6 +239,10 @@ $stmtSus = $pdo->query("
 ");
 $suspicious = $stmtSus ? $stmtSus->fetchAll(PDO::FETCH_ASSOC) : [];
 
+// Marquee Clients
+$stmtMq = $pdo->query("SELECT * FROM saas_marquee_clients ORDER BY id DESC");
+$marquees = $stmtMq ? $stmtMq->fetchAll(PDO::FETCH_ASSOC) : [];
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -271,6 +331,9 @@ $suspicious = $stmtSus ? $stmtSus->fetchAll(PDO::FETCH_ASSOC) : [];
             <button onclick="switchTab('domains')" id="tab-btn-domains" class="sidebar-link w-full flex items-center justify-between px-4 py-3 rounded-lg text-xs text-slate-400 font-medium text-left">
                 <div class="flex items-center gap-3"><i class="ph-bold ph-globe-hemisphere-west text-lg"></i> Redes / Domínios</div>
                 <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-bold"><?= $activeDomains ?></span>
+            </button>
+            <button onclick="switchTab('marquee')" id="tab-btn-marquee" class="sidebar-link w-full flex items-center justify-between px-4 py-3 rounded-lg text-xs text-slate-400 font-medium text-left">
+                <div class="flex items-center gap-3"><i class="ph-bold ph-image text-lg text-pink-400"></i> Vitrine de Logos (Home)</div>
             </button>
             <button onclick="switchTab('plans')" id="tab-btn-plans" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs text-slate-400 font-medium text-left">
                 <i class="ph-bold ph-currency-dollar text-lg text-emerald-500"></i> Financeiro / Planos
@@ -809,6 +872,102 @@ $suspicious = $stmtSus ? $stmtSus->fetchAll(PDO::FETCH_ASSOC) : [];
                 </div>
             </div>
 
+            </div>
+
+            <!-- ====== TAB MARQUEE LOGOS ====== -->
+            <div id="tab-marquee" class="tab-content max-w-5xl mx-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-black text-white"><i class="ph-bold ph-image text-pink-400 mr-2"></i> Vitrine de Logos na Home</h2>
+                        <p class="text-xs text-slate-500 font-mono mt-1">Carrossel Social Proof da Landing Page (Marquee)</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-8 rounded-2xl border border-pink-500/20 bg-gradient-to-b from-pink-500/5 to-transparent mb-10">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center shadow-lg shadow-pink-500/30">
+                            <i class="ph-bold ph-image text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white leading-tight">Cadastrar Novo Parceiro (B2B)</h3>
+                            <p class="text-xs text-slate-400 font-mono mt-0.5">Essa logomarca passará no carrossel da Landing Page instantaneamente.</p>
+                        </div>
+                    </div>
+                    
+                    <form method="POST" action="" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end relative z-10">
+                        <input type="hidden" name="action" value="add_marquee">
+                        
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2 pl-1">Nome/Alt Cliente (Opcional)</label>
+                            <div class="relative">
+                                <i class="ph-bold ph-text-aa absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-lg"></i>
+                                <input type="text" name="name" placeholder="Pode ficar vazio..." class="w-full bg-slate-900 border border-slate-800 text-white pl-12 pr-4 py-3.5 rounded-lg text-sm focus:border-pink-500 focus:ring-1 outline-none transition-all placeholder:text-slate-700">
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2 pl-1">Arquivo da Logo (PNG/SVG Opcs)</label>
+                            <input type="file" name="logo" accept="image/png, image/jpeg, image/svg+xml, image/webp" class="w-full bg-slate-900 border border-slate-800 text-slate-400 file:bg-slate-800 file:border-none file:text-[10px] file:text-white file:py-1.5 file:px-4 file:rounded file:mr-2 text-xs py-2 px-2 rounded-lg outline-none cursor-pointer hover:border-pink-500 transition-colors">
+                        </div>
+                        
+                        <div class="md:col-span-1">
+                            <button type="submit" class="bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-500 hover:to-pink-400 text-white px-8 py-3.5 rounded-xl text-sm font-bold shadow-xl shadow-pink-500/20 transition-all w-full flex items-center justify-center gap-2">
+                                <i class="ph-bold ph-rocket-launch"></i> Publicar Logo 
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Lista de Logos (Tabela) -->
+                <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+                    <table class="w-full text-left font-sans text-xs">
+                        <thead class="bg-slate-900 border-b border-slate-800 text-slate-500 text-[10px] uppercase tracking-widest bg-black/20">
+                            <tr>
+                                <th class="px-5 py-4">Renderização / Logo Corporativa</th>
+                                <th class="px-5 py-4 text-center">Status Público</th>
+                                <th class="px-5 py-4 text-right">Manutenção</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-slate-300">
+                            <?php if(empty($marquees)): ?>
+                                <tr><td colspan="3" class="text-center py-10 text-slate-500"><i class="ph-bold ph-ghost text-3xl mb-2 block"></i>Nenhuma Logo no banco. Site exibirá HTML estático.</td></tr>
+                            <?php else: foreach($marquees as $mq): ?>
+                            <tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors">
+                                <td class="px-5 py-5 flex items-center gap-4">
+                                    <?php if($mq['logo_path']): ?>
+                                        <div class="h-12 w-auto bg-white/5 p-2 rounded-lg border border-white/10 flex items-center justify-center min-w-[60px] shadow-inner drop-shadow-md">
+                                            <img src="<?= htmlspecialchars($mq['logo_path']) ?>" alt="Logo" class="max-h-8 max-w-[100px] object-contain filter grayscale-0">
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="h-12 px-4 flex items-center justify-center bg-slate-800/50 rounded-lg border border-slate-700 font-mono text-[10px] text-slate-400">Só Txt</div>
+                                    <?php endif; ?>
+                                    <span class="font-bold text-white text-sm"><?= htmlspecialchars($mq['name']) ?></span>
+                                </td>
+                                <td class="px-5 py-5 text-center">
+                                    <form method="POST" action="">
+                                        <input type="hidden" name="action" value="toggle_marquee">
+                                        <input type="hidden" name="marquee_id" value="<?= $mq['id'] ?>">
+                                        <button type="submit" class="<?= $mq['is_active'] ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-slate-800/50 text-slate-500 border border-slate-700 hover:text-white' ?> px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider rounded transition-colors shadow-sm cursor-pointer">
+                                            <?= $mq['is_active'] ? 'Visível (Loop)' : 'Oculto (Geladeira)' ?>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td class="px-5 py-5 text-right">
+                                    <form method="POST" action="" onsubmit="return confirm('ATENÇÃO: Deseja apagar essa logo e o registro dela? Isso removerá o parceiro da landing page.');">
+                                        <input type="hidden" name="action" value="delete_marquee">
+                                        <input type="hidden" name="marquee_id" value="<?= $mq['id'] ?>">
+                                        <button type="submit" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 p-2 rounded transition-colors shadow-sm inline-flex items-center justify-center" title="Apagar Registro Totalmente">
+                                            <i class="ph-bold ph-trash text-sm"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endforeach; endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- ====== TAB 8: COMUNICAÇÃO ====== -->
             <div id="tab-comms" class="tab-content max-w-5xl mx-auto">
                 <div class="glass-panel p-8 rounded-2xl border border-blue-500/20">
@@ -916,6 +1075,7 @@ $suspicious = $stmtSus ? $stmtSus->fetchAll(PDO::FETCH_ASSOC) : [];
             'monitoring': 'Inteligência e WAF Global',
             'plans': 'Arrecadação e Planos B2B',
             'limits': 'Throttling e Limites de Banda',
+            'marquee': 'Visual: Clientes Parceiros',
             'comms': 'Mala Direta e Alertas B2B',
             'settings': 'Configurações de Instância Server'
         };

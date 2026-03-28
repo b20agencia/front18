@@ -6,6 +6,13 @@ try {
     $pdo = Database::getConnection();
     // Exibindo apenas planos com `price` pro site público.
     $planos = $pdo->query("SELECT * FROM plans ORDER BY price ASC")->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Logos do CRM Marquee
+    $marquees = [];
+    try {
+        $stmtMq = $pdo->query("SELECT * FROM saas_marquee_clients WHERE is_active = 1 ORDER BY id DESC");
+        if($stmtMq) $marquees = $stmtMq->fetchAll(PDO::FETCH_ASSOC);
+    } catch (\Throwable $th) {}
 }
 catch (Exception $e) {
     $planos = [];
@@ -493,6 +500,146 @@ catch (Exception $e) {
             </div>
         </div>
     </div>
+
+    <!-- CLIENTS MARQUEE (ESTRUTURA VISUAL) -->
+    <style>
+        .clients-marquee-section {
+            padding: 2rem 0 4rem 0;
+            background: transparent;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+        }
+        .marquee-label {
+            text-align: center;
+            color: #a0a0b0;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+        .marquee-container {
+            display: flex;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+            position: relative;
+            left: 50%;
+            transform: translateX(-50%);
+            /* Efeito de fade/borrão suave nas bordas para as logos sumirem no escuro */
+            mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+        }
+        .marquee-track {
+            display: flex;
+            gap: 2.5rem;
+            align-items: center;
+            justify-content: flex-start;
+            white-space: nowrap;
+            /* Motor da Animação. Tempo pode ser ajustado para mais lento/rápido */
+            animation: marquee 25s linear infinite;
+        }
+        /* Pausa a rolagem das logos quando o mouse do cliente vai em cima */
+        .marquee-container:hover .marquee-track { animation-play-state: paused; }
+        
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+        .client-logo-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 0.8rem 1.8rem;
+            background: rgba(30,30,40,0.4);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            filter: grayscale(1) opacity(0.5); /* As logos ficam mudas e cinzas de início */
+            min-width: max-content;
+        }
+        /* Quando tocadas/olhadas, as logos ascendem em brilho neon */
+        .client-logo-box:hover {
+            filter: grayscale(0) opacity(1);
+            background: rgba(0, 221, 128, 0.05); /* Toque sutil do nosso verde Neon no BG */
+            border-color: rgba(0, 221, 128, 0.3);
+            box-shadow: 0 5px 20px rgba(0, 221, 128, 0.1), inset 0 0 0 1px rgba(0,221,128,0.2);
+            transform: translateY(-2px) scale(1.02);
+            cursor: default;
+        }
+        .client-logo-box svg { fill: currentColor; }
+        .client-logo-box img {
+            height: 28px;
+            object-fit: contain;
+            display: block;
+        }
+    </style>
+    
+    <section class="clients-marquee-section">
+        <div class="marquee-label">Empresas Reais que já Blindaram seus Negócios</div>
+        <div class="marquee-container">
+            <!-- Pista contendo clones para a ilusão da rolagem infinita. As logos originais ficarão antes do comentário SET 2 -->
+            <div class="marquee-track">
+                
+                <?php if (empty($marquees)): ?>
+                    <!-- MOCKUP FALLBACK (Se o admin ainda não cadastrou nada) -->
+                    <!-- SET 1 -->
+                    <div class="client-logo-box">🔒 Agência XZ</div>
+                    <div class="client-logo-box"><svg width="24" height="24" viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM152,184H104a8,8,0,0,1,0-16h48a8,8,0,0,1,0,16Z"></path></svg> Connecta Mídia</div>
+                    <div class="client-logo-box">BetMax Sports</div>
+                    <div class="client-logo-box">SaaS Vision.io</div>
+                    <div class="client-logo-box">Grupo V18</div>
+                    <div class="client-logo-box">AdultPlay Hub</div>
+                    <div class="client-logo-box">NeoCasinos</div>
+                    <!-- SET 2 -->
+                    <div class="client-logo-box">🔒 Agência XZ</div>
+                    <div class="client-logo-box"><svg width="24" height="24" viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM152,184H104a8,8,0,0,1,0-16h48a8,8,0,0,1,0,16Z"></path></svg> Connecta Mídia</div>
+                    <div class="client-logo-box">BetMax Sports</div>
+                    <div class="client-logo-box">SaaS Vision.io</div>
+                    <div class="client-logo-box">Grupo V18</div>
+                    <div class="client-logo-box">AdultPlay Hub</div>
+                    <div class="client-logo-box">NeoCasinos</div>
+                <?php else: ?>
+                    <!-- DADOS DO BANCO DE DADOS (ADMIN DASHBOARD) -->
+                    <!-- Volume garantido pro Marquee deslizar preenchendo 100% caso o dono cadastre apenas 1 ou 2 marcas iniciais -->
+                    <?php 
+                    $displayList = $marquees;
+                    while (count($displayList) < 6 && count($displayList) > 0) {
+                        $displayList = array_merge($displayList, $marquees);
+                    }
+                    ?>
+                    
+                    <!-- SET 1 ORIGINAL -->
+                    <?php foreach($displayList as $mq): ?>
+                        <div class="client-logo-box">
+                            <?php if(!empty($mq['logo_path'])): ?>
+                                <img src="<?= htmlspecialchars($mq['logo_path']) ?>" alt="<?= htmlspecialchars($mq['name']) ?>" loading="lazy">
+                            <?php else: ?>
+                                <?= htmlspecialchars($mq['name']) ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    
+                    <!-- SET 2 CLONE RIGOROSO PARA A ILUSÃO INFINITA DO CSS -->
+                    <?php foreach($displayList as $mq): ?>
+                        <div class="client-logo-box">
+                            <?php if(!empty($mq['logo_path'])): ?>
+                                <img src="<?= htmlspecialchars($mq['logo_path']) ?>" alt="<?= htmlspecialchars($mq['name']) ?>" loading="lazy">
+                            <?php else: ?>
+                                <?= htmlspecialchars($mq['name']) ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+
+            </div>
+        </div>
+    </section>
 
     <!-- RISCOS -->
     <section class="section" id="riscos">

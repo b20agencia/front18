@@ -52,10 +52,10 @@ catch (Exception $e) {
     }
     </script>
 
-    <!-- Fontes do Google: Space Grotesk -->
+    <!-- Fontes do Google: Inter e Space Grotesk -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
     
     <!-- Nosso CSS já integrado com estilo GoAdopt e fontes da LGPD -->
     <link rel="stylesheet" href="/public/css/new.css?v=<?= time()?>">
@@ -116,12 +116,9 @@ catch (Exception $e) {
         #solucao, #planos { background: #FFFFFF; }
         #faq, .final-cta { background: #EFF3F4; }
         
-        .hero-antigravity, 
-        .hero-antigravity h1, 
-        .hero-antigravity p, 
-        .hero-antigravity a, 
-        .hero-antigravity span, 
-        .hero-antigravity div {
+        body { font-family: 'Inter', sans-serif; }
+        .hero-antigravity h1,
+        .hero-antigravity .font-space {
             font-family: 'Space Grotesk', sans-serif !important;
         }
         .hero-antigravity {
@@ -356,7 +353,7 @@ catch (Exception $e) {
                     </svg> ATENÇÃO: SEU SITE ESTÁ IRREGULAR AGORA
                 </div>
                 
-                <h1 style="font-size: clamp(1.8rem, 3.5vw, 3rem); line-height: 1.1; margin-bottom: 1.5rem; color: #190C3A; text-align: left; text-shadow: 0 4px 20px rgba(25, 12, 58,0.1); font-weight: 800; letter-spacing: -0.02em;">
+                <h1 style="font-size: clamp(3rem, 6vw, 4.5rem); line-height: 1.05; margin-bottom: 1.5rem; color: #190C3A; text-align: left; text-shadow: 0 4px 20px rgba(25, 12, 58,0.1); font-weight: 800; letter-spacing: -0.04em;">
                     Seu site pode levar uma<br>
                     <span style="display: inline-block; background: linear-gradient(to right, #EA5944, #FD8972); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.1em; transform: scale(1.02); padding: 5px 0;">multa de R$ 50 milhões</span><br>
                     <span style="display: inline-flex; align-items: center; gap: 8px; margin-top: 15px; font-size: 0.35em; font-weight: 700; color: #FD8972; border: 1px solid rgba(253, 137, 114, 0.3); background: rgba(253, 137, 114, 0.1); padding: 8px 16px; border-radius: 100px; box-shadow: 0 0 15px rgba(253, 137, 114,0.1); letter-spacing: 0;">

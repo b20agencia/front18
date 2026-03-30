@@ -52,6 +52,11 @@ catch (Exception $e) {
     }
     </script>
 
+    <!-- Fontes do Google: Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <!-- Nosso CSS já integrado com estilo GoAdopt e fontes da LGPD -->
     <link rel="stylesheet" href="/public/css/new.css?v=<?= time()?>">
 </head>
@@ -111,6 +116,14 @@ catch (Exception $e) {
         #solucao, #planos { background: #FFFFFF; }
         #faq, .final-cta { background: #EFF3F4; }
         
+        .hero-antigravity, 
+        .hero-antigravity h1, 
+        .hero-antigravity p, 
+        .hero-antigravity a, 
+        .hero-antigravity span, 
+        .hero-antigravity div {
+            font-family: 'Space Grotesk', sans-serif !important;
+        }
         .hero-antigravity {
             position: relative;
             min-height: 90vh;
@@ -155,15 +168,8 @@ catch (Exception $e) {
         .glass-capsule {
             position: relative;
             z-index: 2;
-            background: rgba(255, 255, 255, 0.75);
-            border: 1px solid rgba(25, 12, 58, 0.08);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border-radius: 24px;
-            padding: 3rem;
-            box-shadow: 0 30px 60px rgba(25, 12, 58,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
             max-width: 650px;
-            transform-style: preserve-3d;
+            /* CAIXA REMOVIDA A PEDIDO DO CLIENTE - Deixa conteúdo "respirar" no Bg */
         }
         .btn-radiant {
             position: relative;
@@ -317,9 +323,9 @@ catch (Exception $e) {
         @media (max-width: 900px) {
             .hero-antigravity { padding: 100px 15px 40px; flex-direction: column; min-height: auto; }
             .container-hero { grid-template-columns: 1fr !important; gap: 30px !important; }
-            .glass-capsule { padding: 1.5rem; margin-bottom: 0; max-width: 100%; border-radius: 16px; }
-            .glass-capsule h1 { font-size: clamp(2rem, 8vw, 2.5rem) !important; text-align: center !important; }
-            .glass-capsule p { font-size: 1rem !important; text-align: center !important; margin-bottom: 2rem !important; }
+            .glass-capsule { padding: 0; margin-bottom: 0; max-width: 100%; border-radius: 0; }
+            .glass-capsule h1 { font-size: clamp(2.2rem, 8vw, 2.5rem) !important; text-align: center !important; }
+            .glass-capsule p { font-size: 1.1rem !important; text-align: center !important; margin-bottom: 2rem !important; }
             
             /* Center header elements */
             .glass-capsule .hero-eyebrow { margin: 0 auto 1.5rem auto !important; display: inline-flex !important; }
@@ -359,11 +365,11 @@ catch (Exception $e) {
                     </span>
                 </h1>
                 
-                <p style="font-size: 1.05rem; color: #2D0F65; line-height: 1.6; margin-bottom: 2rem; text-align: left; max-width: 95%;">
-                    A <strong style="color: #190C3A;">Lei FELCA (15.211/2025)</strong> exige verificação de idade rigorosa em sites com conteúdo restrito. 
-                    O <strong style="color: #190C3A;">Decreto 12.880/2026</strong> regulamentou a necessidade com urgência. 
+                <p style="font-size: 1.15rem; color: #2D0F65; line-height: 1.6; margin-bottom: 2rem; margin-top: 1rem; text-align: left; max-width: 95%;">
+                    A <strong>Lei FELCA (15.211/2025)</strong> exige verificação de idade rigorosa em sites com conteúdo restrito. 
+                    O <strong>Decreto 12.880/2026</strong> regulamentou a necessidade com urgência. 
                     <br><br>
-                    O Front18 atua como <strong style="color: var(--accent-red, #ff1a1a);">catraca inteligente zero-trust na borda.</strong>
+                    O Front18 atua como <strong style="color: #EA5944;">catraca inteligente zero-trust na borda.</strong>
                 </p>
                 
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-start;">

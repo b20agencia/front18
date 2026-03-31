@@ -99,8 +99,9 @@ catch (Exception $e) {
         /* CONTRASTE GLOBAL DO LIGHT THEME & MOLDURAS */
         .nav { background: #190C3A !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
         .nav-links a { color: #EFF3F4 !important; opacity: 0.8; }
-        .nav-links a:hover { opacity: 1; color: #FD8972 !important; }
-        .nav-btn { color: #190C3A !important; background: #FD8972 !important; }
+        .nav-links a:not(.nav-btn):hover { opacity: 1; color: #FD8972 !important; }
+        .nav-btn { color: #190C3A !important; background: #FD8972 !important; transition: all 0.3s ease; }
+        .nav-links a.nav-btn:hover { background: #EA5944 !important; color: #EFF3F4 !important; opacity: 1; }
         
         .urgency-banner { background: #EA5944 !important; color: #EFF3F4 !important; border-bottom: none !important; }
         .urgency-banner strong { color: #FFFFFF !important; }
@@ -411,9 +412,7 @@ catch (Exception $e) {
                     <div class="hologram-scan-line"></div>
                     <div class="hologram-content">
                         <div class="face-mesh">
-                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#EA5944" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M5 20c.4-2.8 2.8-5 6-5h2c3.2 0 5.6 2.2 6 5"/><circle cx="12" cy="7" r="4"/><path d="M12 11v4"/><path d="M10 15h4"/>
-                            </svg>
+                            <img src="/public/img/favicon.png" alt="Front18 Logo" style="width: 45px; height: 45px; object-fit: contain;">
                         </div>
                         <div style="font-family: monospace; color: #EA5944; font-size: 1.4rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;">
                             Liveness Shield
@@ -944,10 +943,7 @@ catch (Exception $e) {
                         <div class="radar-circle" id="simRadarBox">
                             <div class="radar-scan-arm" id="simScanArm"></div>
                             
-                            <svg id="simBaseIcon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#FD8972" stroke-width="1.5" style="position:relative; z-index:3;">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                            </svg>
+                            <img id="simBaseIcon" src="/public/img/favicon.png" alt="Front18 Identidade" style="width: 50px; height: 50px; object-fit: contain; position: relative; z-index: 3;">
                             
                             <video id="simVideo" autoplay muted playsinline style="display:none; width:100%; height:100%; object-fit:cover; border-radius:50%; position:absolute; inset:0; z-index: 1;"></video>
                             

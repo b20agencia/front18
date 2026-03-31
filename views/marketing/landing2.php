@@ -850,40 +850,40 @@ catch (Exception $e) {
                 padding: 1rem 2rem;
                 font-size: 1.1rem;
                 font-weight: 700;
-                color: #FD8972;
-                background: rgba(253, 137, 114, 0.1);
+                color: #FFFFFF;
+                background: #EA5944;
                 border-radius: 12px;
                 text-decoration: none;
                 overflow: hidden;
                 transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-                box-shadow: 0 0 0 1px rgba(253, 137, 114,0.3);
+                box-shadow: 0 10px 30px rgba(234, 89, 68,0.3);
+                border: 1px solid rgba(253, 137, 114, 0.4);
                 cursor: pointer;
             }
             .btn-neon-green::before {
                 content: '';
                 position: absolute;
                 inset: -2px;
-                background: conic-gradient(from 0deg, transparent 70%, #FD8972 100%);
+                background: conic-gradient(from 0deg, transparent 70%, #FFFFFF 100%);
                 animation: neonSpin 2s linear infinite;
                 z-index: -1;
-                opacity: 0;
-                transition: opacity 0.3s;
+                opacity: 0.6;
             }
             .btn-neon-green::after {
                 content: '';
                 position: absolute;
                 inset: 2px;
-                background: #05110c;
+                background: #EA5944;
                 border-radius: 10px;
                 z-index: -1;
                 transition: background 0.3s;
             }
+            @keyframes neonSpin { 100% { transform: rotate(360deg); } }
             .btn-neon-green:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 10px 30px rgba(253, 137, 114,0.3);
+                transform: translateY(-3px) scale(1.02);
+                box-shadow: 0 15px 40px rgba(253, 137, 114,0.4);
             }
-            .btn-neon-green:hover::before { opacity: 1; }
-            .btn-neon-green:hover::after { background: rgba(253, 137, 114,0.15); }
+            .btn-neon-green:hover::after { background: #E64530; }
             
             @media (max-width: 900px) {
                 .sol-antigrav-grid { grid-template-columns: 1fr; gap: 3rem; text-align: center; }

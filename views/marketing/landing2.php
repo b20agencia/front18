@@ -100,8 +100,8 @@ catch (Exception $e) {
         .nav { background: #190C3A !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
         .nav-links a { color: #EFF3F4 !important; opacity: 0.8; }
         .nav-links a:not(.nav-btn):hover { opacity: 1; color: #FD8972 !important; }
-        .nav-btn { color: #190C3A !important; background: #FD8972 !important; transition: all 0.3s ease; }
-        .nav-links a.nav-btn:hover { background: #EA5944 !important; color: #EFF3F4 !important; opacity: 1; }
+        .nav-btn { color: #190C3A !important; background: #FD8972 !important; opacity: 1 !important; font-weight: 700 !important; transition: all 0.3s ease; border: 1px solid rgba(25, 12, 58, 0.1); }
+        .nav-links a.nav-btn:hover { background: #EA5944 !important; color: #EFF3F4 !important; opacity: 1 !important; border-color: transparent; }
         
         .urgency-banner { background: #EA5944 !important; color: #EFF3F4 !important; border-bottom: none !important; }
         .urgency-banner strong { color: #FFFFFF !important; }
@@ -289,7 +289,7 @@ catch (Exception $e) {
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            background: rgba(0,0,0,0.5);
+            background: transparent;
         }
         .face-mesh::before {
             content: '';
@@ -1339,11 +1339,7 @@ endif; ?>
             </svg> A fiscalização já começou. Não espere a notificação.</div>
         <h2>Proteja seu negócio digital completo.</h2>
         <div class="hero-ctas">
-            <a href="#planos" class="btn-lg btn-danger"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2">
-                    <path
-                        d="M8.5 14.5A2.5 2.5 0 0 0 11 12c-2.2-.6-3.8-2.6-4.5-5-.4-1.2-1.3-1.8-2.5-1.5a5.5 5.5 0 0 0 10 9c.7-2.2 0-4.6-2-6 1.4 3 0 6.5-2.5 8" />
-                </svg> Ativar Proteção Agora</a>
+            <a href="#planos" class="btn-lg btn-danger">Ativar Proteção Agora</a>
         </div>
     </section>
 
